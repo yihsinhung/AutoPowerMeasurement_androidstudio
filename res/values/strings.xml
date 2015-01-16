@@ -43,5 +43,9 @@
     <string name="service_plug_hdmi_detail">插入HDMI後同時按下確定與電腦端的按鈕開始測量</string>
     <string name="service_test_complete_title">測試已完成!</string>
     <string name="service_test_complete_detail">您可至電腦端的 Excel 檔案觀察此次測量的結果，謝謝!</string>
+    <string name="service_close_airplane_title">請關閉飛航模式以及GPS</string>
+    <string name="service_close_airplane_detail">關閉飛航模式以及GPS後同時按下確定與電腦端的按鈕開始測量</string>
+    <string name="service_connectivity_title">開啟 GPS</string>
+    <string name="service_connectivity_detail">確認 Wifi連上網路、藍芽及GPS 開啟後同時按下確定與電腦端的按鈕開始測量</string>
 
 </resources>

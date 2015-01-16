@@ -1,27 +1,39 @@
 package com.kenji.power;
 
 import java.io.File;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 
 import android.annotation.SuppressLint;
 import android.app.ActivityManager;
 import android.app.ActivityManager.RunningAppProcessInfo;
+import android.app.AlarmManager;
 import android.app.AlertDialog;
 import android.app.AlertDialog.Builder;
 import android.app.KeyguardManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.app.admin.DevicePolicyManager;
+import android.bluetooth.BluetoothAdapter;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.ActivityInfo;
 import android.graphics.PixelFormat;
 import android.net.Uri;
+import android.net.wifi.WifiManager;
+import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
+import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
@@ -30,47 +42,219 @@ import android.widget.Toast;
 @SuppressLint("InlinedApi")
 public class APMService extends Service {
 
-	Handler handler = new Handler();
-	Handler handler2 = new Handler();
-	// private static final long CONST_DELAYED_TIME = 3000;
-	private static long CONST_DELAYED_TIME = 100000;
+	public static final String ACTIVITY_PARA_TEST_TYPE = "activity_para_test_type";
+	public static final int TEST_TYPE_QUICK = 0;
+	public static final int TEST_TYPE_FULL = 1;
+	public static final int TEST_TYPE_SINGLE = 2;
+	private int testType;
+
+	private static final String ACTION_ALARM_EXPIRED = "com.kenji.power.ALARM_EXPIRED";
+	private static final String ALARM_EXPIRED_POSITION = "alarm_expired_position";
+
+	private static final int REQUEST_CODE_ALARM_EXPIRED = 1;
+	private static final long DURATION_ZERO = 0;
+	private static final long DURATION_NORMAL = 510000;
+	private static final long DURATION_MUSIC = 160000;
+	private static final long DURATION_VIDEO_GOLDEN = 110000;
+	private static final long DURATION_VIDEO_CAR = 35000;
+	private static final long DURATION_LONG = 300000;
+
+	private static final long DURATION_SMALL_DELAY = 400;
+
+	private static final long DURATION_QUICK = 5000;
+
+	Handler mHandler = new Handler();
 
 	PowerManager pm;
 	WakeLock wakeLock;
 
-	View view;
+	View switchOrientationView;
 	WindowManager wm;
 
 	String gallery = "";
 
+	private int currentPosition = 0;
+	private SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+
+	private String emailContent = "";
+
+	private final BroadcastReceiver alarmExpiredReceiver = new BroadcastReceiver() {
+		@Override
+		public void onReceive(Context context, Intent intent) {
+
+			if (intent.getAction().equals(ACTION_ALARM_EXPIRED)) {
+				currentPosition = intent.getExtras().getInt(
+						ALARM_EXPIRED_POSITION);
+				Log.w("Kenji",
+						"Test Index="
+								+ currentPosition
+								+ " time="
+								+ sdf.format(new Date(System
+										.currentTimeMillis())));
+
+				emailContent = emailContent + "Test Index=" + currentPosition
+						+ " time="
+						+ sdf.format(new Date(System.currentTimeMillis()))
+						+ '\n';
+
+				mPowerMeasurementItems.get(currentPosition).startTask();
+
+				setupNextTask(false);
+			}
+		}
+	};
+
+	private void setupNextTask(boolean forceExecute) {
+		if (currentPosition + 1 < mPowerMeasurementItems.size()
+				&& (mPowerMeasurementItems.get(currentPosition)
+						.getExpiredDuration() != DURATION_ZERO) || forceExecute) {
+			currentPosition++;
+			setupPendingIntent(currentPosition);
+		} else {
+			Log.w("Kenji", "提醒視窗跳出");
+			emailContent = emailContent + "提醒視窗跳出" + " time="
+					+ sdf.format(new Date(System.currentTimeMillis())) + '\n';
+		}
+	}
+
+	private ArrayList<PowerMeasurementItem> mPowerMeasurementItems = new ArrayList<PowerMeasurementItem>();
+
 	@Override
 	public int onStartCommand(Intent intent, int flags, int startId) {
 		// TODO do something useful
-		Log.w("Kenji", intent.getExtras().getString("gallery"));
 		gallery = intent.getExtras().getString("gallery", "");
-		CONST_DELAYED_TIME = intent.getExtras().getLong("time", 100000);
+		testType = intent.getExtras().getInt(ACTIVITY_PARA_TEST_TYPE,
+				TEST_TYPE_QUICK);
+		Log.w("Kenji", "testType=" + testType);
+
 		return Service.START_NOT_STICKY;
 	}
 
 	@Override
 	public void onCreate() {
 
+		registerAlarmReceiver();
+		setupMeasureItems();
+		setupPendingIntent(currentPosition);
 
-		handler.post(new Runnable() {
+	}
 
-			@Override
-			public void run() {
-				HomeTest();
+	private void registerAlarmReceiver() {
+		IntentFilter filter = new IntentFilter();
+		filter.addAction(ACTION_ALARM_EXPIRED);
 
-				buildDialogFirst(
-						getResources().getString(
-								R.string.service_start_test_title),
-						getResources().getString(
-								R.string.service_start_test_detail));
+		registerReceiver(alarmExpiredReceiver, filter);
+	}
 
+	private void setupMeasureItems() {
+		// TODO Auto-generated method stub
+		mPowerMeasurementItems.add(mShowStartDialogItem);
+		mPowerMeasurementItems.add(mShowHomeItem);
+		mPowerMeasurementItems.add(mShowSettingItem);
+		mPowerMeasurementItems.add(mMusicFirstTimeItem);
+		mPowerMeasurementItems.add(mMusicItem);
+		mPowerMeasurementItems.add(mMusicItem);
+		mPowerMeasurementItems.add(mVideoGoldenFirstTimeItem);
+		mPowerMeasurementItems.add(mVideoGoldenItem);
+		mPowerMeasurementItems.add(mVideoGoldenItem);
+		mPowerMeasurementItems.add(mVideoCarItem);
+		mPowerMeasurementItems.add(mVideoCarItem);
+		mPowerMeasurementItems.add(mVideoCarItem);
+		mPowerMeasurementItems.add(mCpuIdleItem);
+		mPowerMeasurementItems.add(mSuspendItem);
+
+		mPowerMeasurementItems.add(mShowEarphoneDialogItem);
+		mPowerMeasurementItems.add(mEarphoneItem);
+		mPowerMeasurementItems.add(mMusicItem);
+		mPowerMeasurementItems.add(mMusicItem);
+
+		mPowerMeasurementItems.add(mShowHDMIDialogItem);
+		mPowerMeasurementItems.add(mVideoGoldenFirstTimeItem);
+		mPowerMeasurementItems.add(mVideoGoldenItem);
+		mPowerMeasurementItems.add(mVideoGoldenItem);
+		mPowerMeasurementItems.add(mVideoCarItem);
+		mPowerMeasurementItems.add(mVideoCarItem);
+		mPowerMeasurementItems.add(mVideoCarItem);
+
+		mPowerMeasurementItems.add(mShowConnectivityDialogItem);
+		mPowerMeasurementItems.add(mSuspendWithConnectivityItem);
+
+		mPowerMeasurementItems.add(mShowAirplaneDialogItem);
+		mPowerMeasurementItems.add(mSuspendWithModemItem);
+
+		mPowerMeasurementItems.add(mEndTestItem);
+	}
+
+	private void setupPendingIntent(int position) {
+		Calendar cal = Calendar.getInstance();
+		int expiredDuration = (position == 0) ? 0
+				: (int) mPowerMeasurementItems.get(position - 1)
+						.getExpiredDuration();
+		if (testType == TEST_TYPE_QUICK && expiredDuration != 0) {
+			expiredDuration = (int) DURATION_QUICK;
+		}
+		cal.add(Calendar.MILLISECOND, expiredDuration);
+
+		Intent intent = new Intent();
+		intent.setAction(ACTION_ALARM_EXPIRED);
+		Bundle bundle = new Bundle();
+		bundle.putInt(ALARM_EXPIRED_POSITION, position);
+		intent.putExtras(bundle);
+
+		PendingIntent pi = PendingIntent
+				.getBroadcast(this, REQUEST_CODE_ALARM_EXPIRED, intent,
+						PendingIntent.FLAG_ONE_SHOT);
+
+		AlarmManager am = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+		am.set(AlarmManager.RTC_WAKEUP, cal.getTimeInMillis(), pi);
+	}
+
+	private void setupConnectivityState(boolean enabled) {
+		WifiManager wifi = (WifiManager) getSystemService(Context.WIFI_SERVICE);
+		wifi.setWifiEnabled(enabled);
+
+		if (enabled) {
+			BluetoothAdapter.getDefaultAdapter().enable();
+			turnGPSOn();
+		} else {
+			BluetoothAdapter.getDefaultAdapter().disable();
+			turnGPSOff();
+		}
+	}
+
+	private void turnGPSOn() {
+
+		try {
+			String provider = Settings.Secure.getString(getContentResolver(),
+					Settings.Secure.LOCATION_PROVIDERS_ALLOWED);
+
+			if (!provider.contains("gps")) { // if gps is disabled
+				final Intent poke = new Intent();
+				poke.setClassName("com.android.settings",
+						"com.android.settings.widget.SettingsAppWidgetProvider");
+				poke.addCategory(Intent.CATEGORY_ALTERNATIVE);
+				poke.setData(Uri.parse("3"));
+				sendBroadcast(poke);
 			}
-		});
+		} catch (Exception e) {
+			// TODO: handle exception
+			e.printStackTrace();
+		}
 
+	}
+
+	private void turnGPSOff() {
+		String provider = Settings.Secure.getString(getContentResolver(),
+				Settings.Secure.LOCATION_PROVIDERS_ALLOWED);
+
+		if (provider.contains("gps")) { // if gps is enabled
+			final Intent poke = new Intent();
+			poke.setClassName("com.android.settings",
+					"com.android.settings.widget.SettingsAppWidgetProvider");
+			poke.addCategory(Intent.CATEGORY_ALTERNATIVE);
+			poke.setData(Uri.parse("3"));
+			sendBroadcast(poke);
+		}
 	}
 
 	private void playCarVideo() {
@@ -111,12 +295,12 @@ public class APMService extends Service {
 		// TODO Auto-generated method stub
 
 		wm = (WindowManager) getSystemService(WINDOW_SERVICE);
-		if (view != null) {
-			wm.removeView(view);
-			view = null;
+		if (switchOrientationView != null) {
+			wm.removeView(switchOrientationView);
+			switchOrientationView = null;
 		}
 
-		view = new View(getApplicationContext());
+		switchOrientationView = new View(getApplicationContext());
 		int dimension = 0;
 		int pixelFormat = PixelFormat.TRANSLUCENT;
 		final WindowManager.LayoutParams params = new WindowManager.LayoutParams(
@@ -127,7 +311,7 @@ public class APMService extends Service {
 				pixelFormat);
 		params.screenOrientation = rotation;
 
-		wm.addView(view, params);
+		wm.addView(switchOrientationView, params);
 
 	}
 
@@ -143,7 +327,7 @@ public class APMService extends Service {
 				| PowerManager.ACQUIRE_CAUSES_WAKEUP
 				| PowerManager.ON_AFTER_RELEASE, "MyWakeLock");
 		wakeLock.acquire();
-		handler2.postDelayed(new Runnable() {
+		mHandler.postDelayed(new Runnable() {
 
 			@Override
 			public void run() {
@@ -222,7 +406,7 @@ public class APMService extends Service {
 			intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
 			startActivity(intent);
 		} else {
-			handler2.postDelayed(new Runnable() {
+			mHandler.postDelayed(new Runnable() {
 
 				@Override
 				public void run() {
@@ -235,7 +419,7 @@ public class APMService extends Service {
 
 	}
 
-	private void SettingsTest() {
+	private void showSettingScreen() {
 		// TODO Auto-generated method stub
 		Intent intent = new Intent();
 		ComponentName comp = new ComponentName("com.android.settings",
@@ -244,220 +428,15 @@ public class APMService extends Service {
 		intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 		intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
 		startActivity(intent);
-
 	}
 
-	private void HomeTest() {
+	private void showHomeScreen() {
 		// TODO Auto-generated method stub
 		Intent intent = new Intent(Intent.ACTION_MAIN);
 		intent.addCategory(Intent.CATEGORY_HOME);
 		intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 		intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
 		startActivity(intent);
-
-	}
-
-	@SuppressLint("NewApi")
-	private void buildDialogFirst(String title, String message) {
-		// TODO Auto-generated method stub
-		Builder builder = new AlertDialog.Builder(getApplicationContext(),
-				AlertDialog.THEME_HOLO_LIGHT);
-		builder.setTitle(title);
-		builder.setMessage(message);
-		builder.setNegativeButton(
-				getResources().getString(R.string.service_cancel),
-				new DialogInterface.OnClickListener() {
-					@Override
-					public void onClick(DialogInterface dialog, int which) {
-						stopSelf();
-					}
-				});
-		builder.setPositiveButton(
-				getResources().getString(R.string.service_sure),
-				new DialogInterface.OnClickListener() {
-					@Override
-					public void onClick(DialogInterface dialog, int which) {
-						handler.post(new Runnable() {
-
-							@Override
-							public void run() {
-								// TODO Auto-generated method stub
-								Toast.makeText(
-										APMService.this,
-										getResources().getString(
-												R.string.service_test_started),
-										Toast.LENGTH_SHORT).show();
-								killBackgroundProcess("com.kenji.power");
-
-							}
-						});
-
-						handler.postDelayed(new Runnable() {
-
-							@Override
-							public void run() {
-								// TODO Auto-generated method stub
-								SettingsTest();
-
-							}
-						}, (long) (CONST_DELAYED_TIME * 4.9));
-
-						handler.postDelayed(new Runnable() {
-
-							@Override
-							public void run() {
-								// TODO Auto-generated method stub
-								HomeTest();
-								killBackgroundProcess("com.android.settings");
-
-								LockScreenTest();
-								playMusicTest();
-
-							}
-						}, (long) (CONST_DELAYED_TIME * 9.8));
-
-						handler.postDelayed(new Runnable() {
-
-							@Override
-							public void run() {
-								// TODO Auto-generated method stub
-
-								playMusicTest();
-							}
-						}, (long) (CONST_DELAYED_TIME * 11.4));
-
-						handler.postDelayed(new Runnable() {
-
-							@Override
-							public void run() {
-								// TODO Auto-generated method stub
-								playMusicTest();
-
-							}
-						}, (long) (CONST_DELAYED_TIME * 13));
-
-						handler.postDelayed(new Runnable() {
-
-							@Override
-							public void run() {
-								// TODO Auto-generated method stub
-								// playGoldenVideoTest();
-								// stopMusic();
-
-								turnScreenOn();
-
-								handler2.postDelayed(new Runnable() {
-									public void run() {
-										HomeTest();
-										changeScreenRotationMode(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-										playGoldenVideo();
-									}
-								}, 100);
-
-							}
-						}, (long) (CONST_DELAYED_TIME * 14.6));
-
-						handler.postDelayed(new Runnable() {
-
-							@Override
-							public void run() {
-								// TODO Auto-generated method stub
-								playGoldenVideo();
-							}
-						}, (long) (CONST_DELAYED_TIME * 15.7));
-
-						handler.postDelayed(new Runnable() {
-
-							@Override
-							public void run() {
-								// TODO Auto-generated method stub
-								playGoldenVideo();
-							}
-						}, (long) (CONST_DELAYED_TIME * 16.8));
-
-						handler.postDelayed(new Runnable() {
-
-							@Override
-							public void run() {
-								// TODO Auto-generated method stub
-								playCarVideo();
-							}
-						}, (long) (CONST_DELAYED_TIME * 17.9));
-
-						handler.postDelayed(new Runnable() {
-
-							@Override
-							public void run() {
-								// TODO Auto-generated method stub
-								playCarVideo();
-							}
-						}, (long) (CONST_DELAYED_TIME * 18.25));
-
-						handler.postDelayed(new Runnable() {
-
-							@Override
-							public void run() {
-								// TODO Auto-generated method stub
-								playCarVideo();
-							}
-						}, (long) (CONST_DELAYED_TIME * 18.6));
-
-						handler.postDelayed(new Runnable() {
-
-							@Override
-							public void run() {
-								// TODO Auto-generated method stub
-								HomeTest();
-								changeScreenRotationMode(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-								idleTest();
-								LockScreenTest();
-							}
-						}, (long) (CONST_DELAYED_TIME * 18.95));
-
-						handler.postDelayed(new Runnable() {
-
-							@Override
-							public void run() {
-								// TODO Auto-generated method stub
-
-								wakeLock.release();
-								// turnScreenOn();
-
-								// Intent intent = new Intent();
-								// intent.setClass(getApplicationContext(),
-								// UpdateService.class);
-								// getApplicationContext().startService(intent);
-
-								LockScreenTest();
-							}
-						}, (long) (CONST_DELAYED_TIME * 24.25));
-
-						handler.postDelayed(new Runnable() {
-
-							@Override
-							public void run() {
-								// TODO Auto-generated method stub
-								HomeTest();
-								turnScreenOn();
-								// changeScreenRotationMode(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-								buildDialog(
-										getResources()
-												.getString(
-														R.string.service_plug_earphone_title),
-										getResources()
-												.getString(
-														R.string.service_plug_earphone_detail));
-							}
-						}, (long) (CONST_DELAYED_TIME * 24.55));
-					}
-				});
-		final AlertDialog dialog = builder.create();
-		// 在dialog show方法之前添加如下代碼，表示該dialog是一個系統的dialog
-		dialog.getWindow().setType(
-				(WindowManager.LayoutParams.TYPE_SYSTEM_ALERT));
-
-		dialog.show();
-		dialog.setCancelable(false);
 	}
 
 	@SuppressLint("NewApi")
@@ -480,58 +459,7 @@ public class APMService extends Service {
 				new DialogInterface.OnClickListener() {
 					@Override
 					public void onClick(DialogInterface dialog, int which) {
-						handler.post(new Runnable() {
-
-							@Override
-							public void run() {
-								// TODO Auto-generated method stub
-								killBackgroundProcess(gallery);
-								LockScreenTest();
-								playMusicTest();
-							}
-						});
-
-						handler.postDelayed(new Runnable() {
-
-							@Override
-							public void run() {
-								// TODO Auto-generated method stub
-								playMusicTest();
-							}
-						}, (long) (CONST_DELAYED_TIME * 1.6));
-
-						handler.postDelayed(new Runnable() {
-
-							@Override
-							public void run() {
-								// TODO Auto-generated method stub
-								playMusicTest();
-
-							}
-						}, (long) (CONST_DELAYED_TIME * 3.2));
-
-						handler.postDelayed(new Runnable() {
-
-							@Override
-							public void run() {
-								// TODO Auto-generated method stub
-								turnScreenOn();
-
-								handler2.postDelayed(new Runnable() {
-									public void run() {
-										HomeTest();
-										buildHDMIDialog(
-												getResources()
-														.getString(
-																R.string.service_plug_hdmi_title),
-												getResources()
-														.getString(
-																R.string.service_plug_hdmi_detail));
-									}
-								}, 100);
-
-							}
-						}, (long) (CONST_DELAYED_TIME * 4.8));
+						setupNextTask(true);
 					}
 				});
 		final AlertDialog dialog = builder.create();
@@ -541,140 +469,22 @@ public class APMService extends Service {
 
 		dialog.show();
 		dialog.setCancelable(false);
-		// handler.postDelayed(new Runnable() {
-		// @Override
-		// public void run() {
-		//
-		// dialog.show();
-		// }
-		// }, CONST_DELAYED_TIME);
+
 	}
-
-	@SuppressLint("NewApi")
-	private void buildHDMIDialog(String title, String message) {
-		// TODO Auto-generated method stub
-		Builder builder = new AlertDialog.Builder(getApplicationContext(),
-				AlertDialog.THEME_HOLO_LIGHT);
-		builder.setTitle(title);
-		builder.setMessage(message);
-		builder.setNegativeButton(
-				getResources().getString(R.string.service_cancel),
-				new DialogInterface.OnClickListener() {
-					@Override
-					public void onClick(DialogInterface dialog, int which) {
-						stopSelf();
-					}
-				});
-		builder.setPositiveButton(
-				getResources().getString(R.string.service_sure),
-				new DialogInterface.OnClickListener() {
-					@Override
-					public void onClick(DialogInterface dialog, int which) {
-						handler.post(new Runnable() {
-
-							@Override
-							public void run() {
-								// TODO Auto-generated method stub
-								changeScreenRotationMode(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-								playGoldenVideo();
-							}
-						});
-
-						handler.postDelayed(new Runnable() {
-
-							@Override
-							public void run() {
-								// TODO Auto-generated method stub
-								playGoldenVideo();
-							}
-						}, (long) (CONST_DELAYED_TIME * 1.1));
-
-						handler.postDelayed(new Runnable() {
-
-							@Override
-							public void run() {
-								// TODO Auto-generated method stub
-								playGoldenVideo();
-							}
-						}, (long) (CONST_DELAYED_TIME * 2.2));
-
-						handler.postDelayed(new Runnable() {
-
-							@Override
-							public void run() {
-								// TODO Auto-generated method stub
-								playCarVideo();
-							}
-						}, (long) (CONST_DELAYED_TIME * 3.3));
-
-						handler.postDelayed(new Runnable() {
-
-							@Override
-							public void run() {
-								// TODO Auto-generated method stub
-								playCarVideo();
-							}
-						}, (long) (CONST_DELAYED_TIME * 3.65));
-
-						handler.postDelayed(new Runnable() {
-
-							@Override
-							public void run() {
-								// TODO Auto-generated method stub
-								playCarVideo();
-							}
-						}, CONST_DELAYED_TIME * 4);
-
-						handler.postDelayed(new Runnable() {
-
-							@Override
-							public void run() {
-								// TODO Auto-generated method stub
-								HomeTest();
-								stopSelf();
-								changeScreenRotationMode(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-								// Toast.makeText(getApplicationContext(),
-								// "測試項目已全部結束!",
-								// Toast.LENGTH_SHORT).show();
-							}
-						}, (long) (CONST_DELAYED_TIME * 4.35));
-					}
-				});
-		final AlertDialog dialog = builder.create();
-		// 在dialog show方法之前添加如下代碼，表示該dialog是一個系統的dialog
-		dialog.getWindow().setType(
-				(WindowManager.LayoutParams.TYPE_SYSTEM_ALERT));
-
-		dialog.show();
-		dialog.setCancelable(false);
-		// handler.postDelayed(new Runnable() {
-		// @Override
-		// public void run() {
-		//
-		// dialog.show();
-		// }
-		// }, CONST_DELAYED_TIME);
-	}
-
-	// @Override
-	// public void onStart(Intent intent, int startId) {
-	// super.onStart(intent, startId);
-	// }
 
 	@Override
 	public void onDestroy() {
+		unregisterReceiver(alarmExpiredReceiver);
 
-		if (view != null) {
-			// Toast.makeText(getApplicationContext(), "Removed",
-			// Toast.LENGTH_SHORT).show();
+		if (switchOrientationView != null) {
 			wm = (WindowManager) getSystemService(WINDOW_SERVICE);
-			wm.removeView(view);
-			view = null;
+			wm.removeView(switchOrientationView);
+			switchOrientationView = null;
 		}
 
-		handler.removeCallbacksAndMessages(null);
+		mHandler.removeCallbacksAndMessages(null);
 
-		handler.post(new Runnable() {
+		mHandler.post(new Runnable() {
 			@Override
 			public void run() {
 				Builder builder = new AlertDialog.Builder(
@@ -690,6 +500,26 @@ public class APMService extends Service {
 							public void onClick(DialogInterface dialog,
 									int which) {
 								stopSelf();
+
+								Intent shareIntent = new Intent(
+										Intent.ACTION_SEND);
+								shareIntent
+										.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+								shareIntent.setType("text/plain");
+								shareIntent.putExtra(Intent.EXTRA_EMAIL,
+										"kenji_chao@asus.com");
+								shareIntent.putExtra(Intent.EXTRA_SUBJECT,
+										"Power apk timestamp info");
+								shareIntent.putExtra(Intent.EXTRA_TEXT,
+										emailContent);
+
+								Intent new_intent = Intent.createChooser(
+										shareIntent, "Share via");
+								new_intent
+										.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+								getApplicationContext().startActivity(
+										new_intent);
+
 							}
 						});
 				final AlertDialog dialog = builder.create();
@@ -709,5 +539,272 @@ public class APMService extends Service {
 		// TODO Auto-generated method stub
 		return null;
 	}
+
+	PowerMeasurementItem mShowStartDialogItem = new PowerMeasurementItem(
+			new PowerMeasurementItem.OnAlarmReceivedListener() {
+
+				@Override
+				public void onStart() {
+					// TODO Auto-generated method stub
+					showHomeScreen();
+
+					buildDialog(
+							getResources().getString(
+									R.string.service_start_test_title),
+							getResources().getString(
+									R.string.service_start_test_detail));
+				}
+			}, DURATION_ZERO);
+
+	PowerMeasurementItem mShowHomeItem = new PowerMeasurementItem(
+			new PowerMeasurementItem.OnAlarmReceivedListener() {
+
+				@Override
+				public void onStart() {
+					// TODO Auto-generated method stub
+					Toast.makeText(
+							APMService.this,
+							getResources().getString(
+									R.string.service_test_started),
+							Toast.LENGTH_SHORT).show();
+					killBackgroundProcess("com.kenji.power");
+				}
+			}, DURATION_NORMAL);
+
+	PowerMeasurementItem mShowSettingItem = new PowerMeasurementItem(
+			new PowerMeasurementItem.OnAlarmReceivedListener() {
+
+				@Override
+				public void onStart() {
+					// TODO Auto-generated method stub
+					showSettingScreen();
+				}
+			}, DURATION_NORMAL);
+
+	PowerMeasurementItem mMusicFirstTimeItem = new PowerMeasurementItem(
+			new PowerMeasurementItem.OnAlarmReceivedListener() {
+
+				@Override
+				public void onStart() {
+					// TODO Auto-generated method stub
+					showHomeScreen();
+					killBackgroundProcess("com.android.settings");
+					LockScreenTest();
+					playMusicTest();
+				}
+			}, DURATION_MUSIC);
+
+	PowerMeasurementItem mMusicItem = new PowerMeasurementItem(
+			new PowerMeasurementItem.OnAlarmReceivedListener() {
+
+				@Override
+				public void onStart() {
+					// TODO Auto-generated method stub
+					playMusicTest();
+				}
+			}, DURATION_MUSIC);
+
+	PowerMeasurementItem mVideoGoldenFirstTimeItem = new PowerMeasurementItem(
+			new PowerMeasurementItem.OnAlarmReceivedListener() {
+
+				@Override
+				public void onStart() {
+					// TODO Auto-generated method stub
+					turnScreenOn();
+
+					mHandler.postDelayed(new Runnable() {
+
+						@Override
+						public void run() {
+							// TODO Auto-generated method stub
+							showHomeScreen();
+							changeScreenRotationMode(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+							playGoldenVideo();
+						}
+					}, DURATION_SMALL_DELAY);
+
+				}
+			}, DURATION_VIDEO_GOLDEN);
+
+	PowerMeasurementItem mVideoGoldenItem = new PowerMeasurementItem(
+			new PowerMeasurementItem.OnAlarmReceivedListener() {
+
+				@Override
+				public void onStart() {
+					// TODO Auto-generated method stub
+					playGoldenVideo();
+				}
+			}, DURATION_VIDEO_GOLDEN);
+
+	PowerMeasurementItem mVideoCarItem = new PowerMeasurementItem(
+			new PowerMeasurementItem.OnAlarmReceivedListener() {
+
+				@Override
+				public void onStart() {
+					// TODO Auto-generated method stub
+					playCarVideo();
+				}
+			}, DURATION_VIDEO_CAR);
+
+	PowerMeasurementItem mCpuIdleItem = new PowerMeasurementItem(
+			new PowerMeasurementItem.OnAlarmReceivedListener() {
+
+				@Override
+				public void onStart() {
+					// TODO Auto-generated method stub
+					showHomeScreen();
+					changeScreenRotationMode(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+					idleTest();
+					LockScreenTest();
+				}
+			}, DURATION_NORMAL);
+
+	PowerMeasurementItem mSuspendItem = new PowerMeasurementItem(
+			new PowerMeasurementItem.OnAlarmReceivedListener() {
+
+				@Override
+				public void onStart() {
+					// TODO Auto-generated method stub
+					if (wakeLock != null && wakeLock.isHeld()) {
+						Log.w("Kenji", "Release wakelock");
+						wakeLock.release();
+					}
+					LockScreenTest();
+				}
+			}, DURATION_NORMAL);
+
+	PowerMeasurementItem mShowEarphoneDialogItem = new PowerMeasurementItem(
+			new PowerMeasurementItem.OnAlarmReceivedListener() {
+
+				@Override
+				public void onStart() {
+					// TODO Auto-generated method stub
+					showHomeScreen();
+					turnScreenOn();
+					buildDialog(
+							getResources().getString(
+									R.string.service_plug_earphone_title),
+							getResources().getString(
+									R.string.service_plug_earphone_detail));
+				}
+			}, DURATION_ZERO);
+
+	PowerMeasurementItem mEarphoneItem = new PowerMeasurementItem(
+			new PowerMeasurementItem.OnAlarmReceivedListener() {
+
+				@Override
+				public void onStart() {
+					// TODO Auto-generated method stub
+					killBackgroundProcess(gallery);
+					LockScreenTest();
+					playMusicTest();
+				}
+			}, DURATION_MUSIC);
+
+	PowerMeasurementItem mShowHDMIDialogItem = new PowerMeasurementItem(
+			new PowerMeasurementItem.OnAlarmReceivedListener() {
+
+				@Override
+				public void onStart() {
+					// TODO Auto-generated method stub
+					turnScreenOn();
+
+					mHandler.postDelayed(new Runnable() {
+
+						@Override
+						public void run() {
+							// TODO Auto-generated method stub
+							showHomeScreen();
+
+							buildDialog(
+									getResources().getString(
+											R.string.service_plug_hdmi_title),
+									getResources().getString(
+											R.string.service_plug_hdmi_detail));
+						}
+					}, DURATION_SMALL_DELAY);
+
+				}
+			}, DURATION_ZERO);
+
+	PowerMeasurementItem mShowConnectivityDialogItem = new PowerMeasurementItem(
+			new PowerMeasurementItem.OnAlarmReceivedListener() {
+
+				@Override
+				public void onStart() {
+					// TODO Auto-generated method stub
+					showHomeScreen();
+					changeScreenRotationMode(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+
+					setupConnectivityState(true);
+
+					turnScreenOn();
+					buildDialog(
+							getResources().getString(
+									R.string.service_connectivity_title),
+							getResources().getString(
+									R.string.service_connectivity_detail));
+				}
+			}, DURATION_ZERO);
+
+	PowerMeasurementItem mSuspendWithConnectivityItem = new PowerMeasurementItem(
+			new PowerMeasurementItem.OnAlarmReceivedListener() {
+
+				@Override
+				public void onStart() {
+					// TODO Auto-generated method stub
+
+					if (wakeLock != null && wakeLock.isHeld()) {
+						Log.w("Kenji", "Release wakelock");
+						wakeLock.release();
+					}
+					LockScreenTest();
+				}
+			}, DURATION_LONG);
+
+	PowerMeasurementItem mShowAirplaneDialogItem = new PowerMeasurementItem(
+			new PowerMeasurementItem.OnAlarmReceivedListener() {
+
+				@Override
+				public void onStart() {
+					// TODO Auto-generated method stub
+					setupConnectivityState(false);
+
+					turnScreenOn();
+					buildDialog(
+							getResources().getString(
+									R.string.service_close_airplane_title),
+							getResources().getString(
+									R.string.service_close_airplane_detail));
+				}
+			}, DURATION_ZERO);
+
+	PowerMeasurementItem mSuspendWithModemItem = new PowerMeasurementItem(
+			new PowerMeasurementItem.OnAlarmReceivedListener() {
+
+				@Override
+				public void onStart() {
+					// TODO Auto-generated method stub
+					if (wakeLock != null && wakeLock.isHeld()) {
+						Log.w("Kenji", "Release wakelock");
+						wakeLock.release();
+					}
+					LockScreenTest();
+				}
+			}, DURATION_LONG);
+
+	PowerMeasurementItem mEndTestItem = new PowerMeasurementItem(
+			new PowerMeasurementItem.OnAlarmReceivedListener() {
+
+				@Override
+				public void onStart() {
+					// TODO Auto-generated method stub
+					turnScreenOn();
+					showHomeScreen();
+
+					stopSelf();
+					changeScreenRotationMode(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+				}
+			}, DURATION_ZERO);
 
 }

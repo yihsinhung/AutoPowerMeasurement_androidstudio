@@ -21,7 +21,8 @@ public class MainActivity extends Activity {
 
 	String galleryPackagename = "";
 	private static final int REQUEST_CODE_DEVICE_ADMIN = 20;
-	private long timeUnit;
+
+	private int testType;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -37,7 +38,8 @@ public class MainActivity extends Activity {
 			@Override
 			public void onClick(View v) {
 				// TODO Auto-generated method stub
-				startTesting(5000);
+				testType = APMService.TEST_TYPE_QUICK;
+				startTesting(testType);
 			}
 		});
 
@@ -46,7 +48,8 @@ public class MainActivity extends Activity {
 			@Override
 			public void onClick(View v) {
 				// TODO Auto-generated method stub
-				startTesting(100000);
+				testType = APMService.TEST_TYPE_FULL;
+				startTesting(testType);
 			}
 		});
 		btnStop.setOnClickListener(new View.OnClickListener() {
@@ -70,8 +73,7 @@ public class MainActivity extends Activity {
 		getPackages();
 	}
 
-	private void startTesting(long timeUnit) {
-		this.timeUnit = timeUnit;
+	private void startTesting(int testType) {
 		ComponentName componentName = new ComponentName(
 				getApplicationContext(), deviceAdminReceiver.class);
 		DevicePolicyManager devicePolicyManager = (DevicePolicyManager) getSystemService(Context.DEVICE_POLICY_SERVICE);
@@ -97,7 +99,7 @@ public class MainActivity extends Activity {
 				Intent intent = new Intent();
 				Bundle bundle = new Bundle();
 				bundle.putString("gallery", galleryPackagename);
-				bundle.putLong("time", timeUnit);
+				bundle.putInt(APMService.ACTIVITY_PARA_TEST_TYPE, testType);
 				intent.putExtras(bundle);
 				intent.setClass(getApplicationContext(), APMService.class);
 				getApplicationContext().startService(intent);
@@ -169,7 +171,7 @@ public class MainActivity extends Activity {
 		// TODO Auto-generated method stub
 		super.onActivityResult(requestCode, resultCode, data);
 		if (requestCode == REQUEST_CODE_DEVICE_ADMIN && resultCode == RESULT_OK) {
-			startTesting(timeUnit);
+			startTesting(testType);
 		}
 	}
 
