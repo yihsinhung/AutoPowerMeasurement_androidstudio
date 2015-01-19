@@ -37,6 +37,7 @@ import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
+import android.view.WindowManager.LayoutParams;
 import android.widget.Toast;
 
 @SuppressLint("InlinedApi")
@@ -51,15 +52,14 @@ public class APMService extends Service {
 	private static final String ACTION_ALARM_EXPIRED = "com.kenji.power.ALARM_EXPIRED";
 	private static final String ALARM_EXPIRED_POSITION = "alarm_expired_position";
 
-	private static final int REQUEST_CODE_ALARM_EXPIRED = 1;
 	private static final long DURATION_ZERO = 0;
-	private static final long DURATION_NORMAL = 510000;
+	private static final long DURATION_NORMAL = 490000;
 	private static final long DURATION_MUSIC = 160000;
 	private static final long DURATION_VIDEO_GOLDEN = 110000;
 	private static final long DURATION_VIDEO_CAR = 35000;
-	private static final long DURATION_LONG = 300000;
+	private static final long DURATION_LONG = 360000;
 
-	private static final long DURATION_SMALL_DELAY = 400;
+	private static final long DURATION_SMALL_DELAY = 500;
 
 	private static final long DURATION_QUICK = 5000;
 
@@ -73,7 +73,7 @@ public class APMService extends Service {
 
 	String gallery = "";
 
-	private int currentPosition = 0;
+	private int currentPosition;
 	private SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
 	private String emailContent = "";
@@ -135,6 +135,8 @@ public class APMService extends Service {
 
 		registerAlarmReceiver();
 		setupMeasureItems();
+
+		currentPosition = 0;
 		setupPendingIntent(currentPosition);
 
 	}
@@ -193,6 +195,9 @@ public class APMService extends Service {
 		if (testType == TEST_TYPE_QUICK && expiredDuration != 0) {
 			expiredDuration = (int) DURATION_QUICK;
 		}
+		emailContent = emailContent + "setupPendingIntent position=" + position
+				+ " expiredDuration=" + expiredDuration + " time="
+				+ sdf.format(new Date(System.currentTimeMillis())) + '\n';
 		cal.add(Calendar.MILLISECOND, expiredDuration);
 
 		Intent intent = new Intent();
@@ -201,9 +206,9 @@ public class APMService extends Service {
 		bundle.putInt(ALARM_EXPIRED_POSITION, position);
 		intent.putExtras(bundle);
 
-		PendingIntent pi = PendingIntent
-				.getBroadcast(this, REQUEST_CODE_ALARM_EXPIRED, intent,
-						PendingIntent.FLAG_ONE_SHOT);
+		int requestCode = (int) System.currentTimeMillis();
+		PendingIntent pi = PendingIntent.getBroadcast(this, requestCode,
+				intent, PendingIntent.FLAG_ONE_SHOT);
 
 		AlarmManager am = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
 		am.set(AlarmManager.RTC_WAKEUP, cal.getTimeInMillis(), pi);
@@ -293,48 +298,41 @@ public class APMService extends Service {
 
 	private void changeScreenRotationMode(int rotation) {
 		// TODO Auto-generated method stub
-
-		wm = (WindowManager) getSystemService(WINDOW_SERVICE);
-		if (switchOrientationView != null) {
-			wm.removeView(switchOrientationView);
-			switchOrientationView = null;
+		if (wm == null) {
+			wm = (WindowManager) getSystemService(WINDOW_SERVICE);
 		}
 
-		switchOrientationView = new View(getApplicationContext());
-		int dimension = 0;
-		int pixelFormat = PixelFormat.TRANSLUCENT;
-		final WindowManager.LayoutParams params = new WindowManager.LayoutParams(
-				dimension, dimension,
-				WindowManager.LayoutParams.TYPE_SYSTEM_OVERLAY,
-				WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
-						| WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-				pixelFormat);
-		params.screenOrientation = rotation;
+		if (switchOrientationView == null) {
+			switchOrientationView = new View(getApplicationContext());
 
-		wm.addView(switchOrientationView, params);
+			int dimension = 0;
+			int pixelFormat = PixelFormat.TRANSLUCENT;
+			final WindowManager.LayoutParams params = new WindowManager.LayoutParams(
+					dimension, dimension,
+					WindowManager.LayoutParams.TYPE_SYSTEM_OVERLAY,
+					WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+							| WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+					pixelFormat);
+			params.screenOrientation = rotation;
+
+			wm.addView(switchOrientationView, params);
+		} else {
+			final WindowManager.LayoutParams params = (LayoutParams) switchOrientationView
+					.getLayoutParams();
+			params.screenOrientation = rotation;
+
+			wm.updateViewLayout(switchOrientationView, params);
+		}
 
 	}
 
 	private void turnScreenOn() {
 		// TODO Auto-generated method stub
-		KeyguardManager km = (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
-		final KeyguardManager.KeyguardLock kl = km
-				.newKeyguardLock("MyKeyguardLock");
-		kl.disableKeyguard();
-
-		PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
-		wakeLock = pm.newWakeLock(PowerManager.FULL_WAKE_LOCK
-				| PowerManager.ACQUIRE_CAUSES_WAKEUP
-				| PowerManager.ON_AFTER_RELEASE, "MyWakeLock");
-		wakeLock.acquire();
-		mHandler.postDelayed(new Runnable() {
-
-			@Override
-			public void run() {
-				// TODO Auto-generated method stub
-				wakeLock.release();
-			}
-		}, 100);
+		Intent intent = new Intent();
+		intent.setClass(getApplicationContext(), TurnScreenOnActivity.class);
+		intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+		intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+		startActivity(intent);
 
 	}
 
@@ -355,11 +353,6 @@ public class APMService extends Service {
 	private void playMusicTest() {
 		// TODO Auto-generated method stub
 
-		KeyguardManager km = (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
-		final KeyguardManager.KeyguardLock kl = km
-				.newKeyguardLock("MyKeyguardLock");
-		kl.disableKeyguard();
-
 		Intent intent = new Intent();
 		intent.setAction(Intent.ACTION_VIEW);
 		File file = new File(Environment.getExternalStorageDirectory()
@@ -370,8 +363,6 @@ public class APMService extends Service {
 		startActivity(intent);
 
 		killBackgroundProcess("com.android.settings");
-
-		kl.reenableKeyguard();
 
 	}
 
@@ -800,10 +791,11 @@ public class APMService extends Service {
 				public void onStart() {
 					// TODO Auto-generated method stub
 					turnScreenOn();
-					showHomeScreen();
+					
+					changeScreenRotationMode(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 
 					stopSelf();
-					changeScreenRotationMode(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+
 				}
 			}, DURATION_ZERO);
 
