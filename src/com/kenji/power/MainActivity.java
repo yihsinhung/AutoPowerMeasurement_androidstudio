@@ -1,5 +1,6 @@
 package com.kenji.power;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -11,66 +12,106 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
-public class MainActivity extends Activity {
+public class MainActivity extends Activity implements View.OnClickListener {
 
 	String galleryPackagename = "";
 	private static final int REQUEST_CODE_DEVICE_ADMIN = 20;
 
 	private int testType;
 
+	Button step1MusicButton;
+	Button step1VideoButton;
+	Button step2FastButton;
+	Button step3CompleteButton;
+	Button step4StopButton;
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 
-		Button btnStartShort = (Button) findViewById(R.id.button1);
-		Button btnStart = (Button) findViewById(R.id.button2);
-		Button btnStop = (Button) findViewById(R.id.button3);
-
-		btnStartShort.setOnClickListener(new View.OnClickListener() {
-
-			@Override
-			public void onClick(View v) {
-				// TODO Auto-generated method stub
-				testType = APMService.TEST_TYPE_QUICK;
-				startTesting(testType);
-			}
-		});
-
-		btnStart.setOnClickListener(new View.OnClickListener() {
-
-			@Override
-			public void onClick(View v) {
-				// TODO Auto-generated method stub
-				testType = APMService.TEST_TYPE_FULL;
-				startTesting(testType);
-			}
-		});
-		btnStop.setOnClickListener(new View.OnClickListener() {
-
-			@Override
-			public void onClick(View v) {
-				// TODO Auto-generated method stub
-				if (isMyServiceRunning()) {
-					Intent intent = new Intent();
-					intent.setClass(getApplicationContext(), APMService.class);
-					getApplicationContext().stopService(intent);
-				} else {
-					Toast.makeText(getApplicationContext(),
-							getResources().getString(R.string.main_no_testing),
-							Toast.LENGTH_SHORT).show();
-				}
-
-			}
-		});
+		findViews();
 
 		getPackages();
+	}
+
+	private void findViews() {
+		// TODO Auto-generated method stub
+		step1MusicButton = (Button) findViewById(R.id.buttonStep1Music);
+		step1VideoButton = (Button) findViewById(R.id.buttonStep1Video);
+		step2FastButton = (Button) findViewById(R.id.buttonStep2Fast);
+		step3CompleteButton = (Button) findViewById(R.id.buttonStep3Complete);
+		step4StopButton = (Button) findViewById(R.id.buttonStep4Stop);
+
+		step1MusicButton.setOnClickListener(this);
+		step1VideoButton.setOnClickListener(this);
+		step2FastButton.setOnClickListener(this);
+		step3CompleteButton.setOnClickListener(this);
+		step4StopButton.setOnClickListener(this);
+
+	}
+
+	@Override
+	public void onClick(View v) {
+		switch (v.getId()) {
+		case R.id.buttonStep1Music:
+			Intent intentMusic = new Intent();
+			intentMusic.setAction(Intent.ACTION_VIEW);
+			File fileMusic = new File(Environment.getExternalStorageDirectory()
+					.getPath() + "/Music/" + "1. Bitter Heart.mp3");
+			intentMusic.setDataAndType(Uri.fromFile(fileMusic), "audio/*");
+			startActivity(intentMusic);
+
+			break;
+		case R.id.buttonStep1Video:
+			Intent intentVideo = new Intent();
+			if (galleryPackagename.equals("com.android.gallery3d")) {
+				ComponentName comp = new ComponentName(galleryPackagename,
+						galleryPackagename + ".app.MovieActivity");
+				intentVideo.setComponent(comp);
+			}
+			intentVideo.setAction(Intent.ACTION_VIEW);
+			File fileVideo = new File(Environment.getExternalStorageDirectory()
+					.getPath() + "/H264_1080p_15Mbps_30fps.mp4");
+			intentVideo.setDataAndType(Uri.fromFile(fileVideo), "video/*");
+			intentVideo.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+			intentVideo.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+			startActivity(intentVideo);
+
+			break;
+		case R.id.buttonStep2Fast:
+			testType = APMService.TEST_TYPE_QUICK;
+			startTesting(testType);
+
+			break;
+		case R.id.buttonStep3Complete:
+			testType = APMService.TEST_TYPE_FULL;
+			startTesting(testType);
+
+			break;
+		case R.id.buttonStep4Stop:
+			if (isMyServiceRunning()) {
+				Intent intent = new Intent();
+				intent.setClass(getApplicationContext(), APMService.class);
+				getApplicationContext().stopService(intent);
+			} else {
+				Toast.makeText(getApplicationContext(),
+						getResources().getString(R.string.main_no_testing),
+						Toast.LENGTH_SHORT).show();
+			}
+
+			break;
+
+		}
+
 	}
 
 	private void startTesting(int testType) {

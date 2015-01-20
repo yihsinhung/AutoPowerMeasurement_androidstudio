@@ -6,6 +6,19 @@
     <string name="hello_world">Hello world!</string>
     <string name="description">Kenji Chao</string>
     <string name="info">"本工具是為了增進測量 Power 的效率而生，你只需要很簡單的步驟即可輕鬆完成測試"</string>
+    <string name="step_1_title">"Step 1: 初始設定"</string>
+    <string name="step_1_detail">"設定 music 以及 video intent 對應要執行的應用程式，選擇完以後請點選「一律採用」"</string>
+    <string name="step_1_music">"設定 music intent"</string>
+    <string name="step_1_video">"設定 video intent"</string>
+    <string name="step_2_title">"Step 2: 快速測試"</string>
+    <string name="step_2_detail">"每五秒跑完一個測項，建議作完整測試前確認此 tool 可以完整跑完快速測試"</string>
+    <string name="step_2_fast">"開始快速測試"</string>
+    <string name="step_3_title">"Step 3: 完整測試"</string>
+    <string name="step_3_detail">"確認機台設定以及 PC 端 excel tool 跟 Agilent 連接完畢後，即可開始完整測試"</string>
+    <string name="step_3_complete">"開始完整測試"</string>
+    <string name="step_4_title">"Step 4: 中斷測試"</string>
+    <string name="step_4_detail">"啟動快速測試或是完整測試以後，想要中斷測試請點選下面的按鈕"</string>
+    <string name="step_4_stop">"中斷測試"</string>
     <string name="attention">"使用須知：\n
         使用前請自行做好機台的設定，並將「golden_flower_h264_720_30p_7M.mp4」以及「H264_1080p_15Mbps_30fps.mp4」這兩個影片檔放在儲存裝置的根目錄下（例如: /sdcard），並將「1. Bitter Heart.mp3」放置在Music資料夾下（例如: /sdcard/Music）"</string>
     <string name="procedure">"
