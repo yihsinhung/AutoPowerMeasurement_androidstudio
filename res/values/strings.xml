@@ -7,11 +7,11 @@
     <string name="description">Kenji Chao</string>
     <string name="info">"本工具是為了增進測量 Power 的效率而生，你只需要很簡單的步驟即可輕鬆完成測試"</string>
     <string name="step_1_title">"Step 1: 初始設定"</string>
-    <string name="step_1_detail">"設定 music 以及 video intent 對應要執行的應用程式，選擇完以後請點選「一律採用」"</string>
+    <string name="step_1_detail">"設定 music 以及 video intent 所要執行的應用程式，選擇完以後請點選「一律採用」，開始播音樂以及影片以後可按 back 鍵回到本頁"</string>
     <string name="step_1_music">"設定 music intent"</string>
     <string name="step_1_video">"設定 video intent"</string>
     <string name="step_2_title">"Step 2: 快速測試"</string>
-    <string name="step_2_detail">"每五秒跑完一個測項，建議作完整測試前確認此 tool 可以完整跑完快速測試"</string>
+    <string name="step_2_detail">"第一次使用建議先點選「快速測試」來判斷裝置是否可使用本 App 完成所有測項，詳細的量測順序請看最下面"</string>
     <string name="step_2_fast">"開始快速測試"</string>
     <string name="step_3_title">"Step 3: 完整測試"</string>
     <string name="step_3_detail">"確認機台設定以及 PC 端 excel tool 跟 Agilent 連接完畢後，即可開始完整測試"</string>
@@ -22,7 +22,7 @@
     <string name="attention">"使用須知：\n
         使用前請自行做好機台的設定，並將「golden_flower_h264_720_30p_7M.mp4」以及「H264_1080p_15Mbps_30fps.mp4」這兩個影片檔放在儲存裝置的根目錄下（例如: /sdcard），並將「1. Bitter Heart.mp3」放置在Music資料夾下（例如: /sdcard/Music）"</string>
     <string name="procedure">"
-	    第一次使用建議先點選「快速測試」來判斷裝置是否可使用本 App 完成所有測項，詳細的量測順序如下:\n
+	    所有測項量測順序如下:\n
 1. idle, display show HOME screen
 
 2. idle,  display show Setting screen
@@ -35,13 +35,17 @@
 
 6. idle (display off)
 
-7. vdd_min
+7. suspend
 
 8. mp3 play back when display off (Ear-phone)
 
 9. Video playback 720p (HDMI)
 
 10. Video playback 1080p (HDMI)
+
+11. suspend with WIFI, Bluetooth, GPS on
+
+12. suspend with modem on
 "</string>
     <string name="main_device_is_testing">測試進行中，如要重新測試請先點選「結束測試」"</string>
     <string name="main_no_testing">目前沒有進行中的測試</string>

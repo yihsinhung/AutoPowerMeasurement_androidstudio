@@ -33,13 +33,14 @@ public class MainActivity extends Activity implements View.OnClickListener {
 	Button step3CompleteButton;
 	Button step4StopButton;
 
+	public static final String TAG = "Auto Power Measurement";
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 
 		findViews();
-
 		getPackages();
 	}
 
@@ -82,8 +83,6 @@ public class MainActivity extends Activity implements View.OnClickListener {
 			File fileVideo = new File(Environment.getExternalStorageDirectory()
 					.getPath() + "/H264_1080p_15Mbps_30fps.mp4");
 			intentVideo.setDataAndType(Uri.fromFile(fileVideo), "video/*");
-			intentVideo.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-			intentVideo.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
 			startActivity(intentVideo);
 
 			break;

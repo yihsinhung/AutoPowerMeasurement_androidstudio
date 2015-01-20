@@ -12,7 +12,6 @@ import android.app.ActivityManager.RunningAppProcessInfo;
 import android.app.AlarmManager;
 import android.app.AlertDialog;
 import android.app.AlertDialog.Builder;
-import android.app.KeyguardManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.app.admin.DevicePolicyManager;
@@ -78,6 +77,9 @@ public class APMService extends Service {
 
 	private String emailContent = "";
 
+	public static final String VIDEO_GOLDEN_FILE_NAME = "golden_flower_h264_720_30p_7M.mp4";
+	public static final String VIDEO_CAR_FILE_NAME = "H264_1080p_15Mbps_30fps.mp4";
+
 	private final BroadcastReceiver alarmExpiredReceiver = new BroadcastReceiver() {
 		@Override
 		public void onReceive(Context context, Intent intent) {
@@ -85,7 +87,7 @@ public class APMService extends Service {
 			if (intent.getAction().equals(ACTION_ALARM_EXPIRED)) {
 				currentPosition = intent.getExtras().getInt(
 						ALARM_EXPIRED_POSITION);
-				Log.w("Kenji",
+				Log.d(MainActivity.TAG,
 						"Test Index="
 								+ currentPosition
 								+ " time="
@@ -195,9 +197,15 @@ public class APMService extends Service {
 		if (testType == TEST_TYPE_QUICK && expiredDuration != 0) {
 			expiredDuration = (int) DURATION_QUICK;
 		}
-		emailContent = emailContent + "setupPendingIntent position=" + position
-				+ " expiredDuration=" + expiredDuration + " time="
-				+ sdf.format(new Date(System.currentTimeMillis())) + '\n';
+
+		Log.d(MainActivity.TAG,
+				"setupPendingIntent position=" + position + " expiredDuration="
+						+ expiredDuration + " time="
+						+ sdf.format(new Date(System.currentTimeMillis())));
+		// emailContent = emailContent + "setupPendingIntent position=" +
+		// position
+		// + " expiredDuration=" + expiredDuration + " time="
+		// + sdf.format(new Date(System.currentTimeMillis())) + '\n';
 		cal.add(Calendar.MILLISECOND, expiredDuration);
 
 		Intent intent = new Intent();
@@ -211,7 +219,7 @@ public class APMService extends Service {
 				intent, PendingIntent.FLAG_ONE_SHOT);
 
 		AlarmManager am = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
-		am.set(AlarmManager.RTC_WAKEUP, cal.getTimeInMillis(), pi);
+		am.setExact(AlarmManager.RTC_WAKEUP, cal.getTimeInMillis(), pi);
 	}
 
 	private void setupConnectivityState(boolean enabled) {
@@ -262,23 +270,7 @@ public class APMService extends Service {
 		}
 	}
 
-	private void playCarVideo() {
-		Intent intent = new Intent();
-		if (gallery.equals("com.android.gallery3d")) {
-			ComponentName comp = new ComponentName(gallery, gallery
-					+ ".app.MovieActivity");
-			intent.setComponent(comp);
-		}
-		intent.setAction(Intent.ACTION_VIEW);
-		File file = new File(Environment.getExternalStorageDirectory()
-				.getPath() + "/H264_1080p_15Mbps_30fps.mp4");
-		intent.setDataAndType(Uri.fromFile(file), "video/*");
-		intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-		intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-		startActivity(intent);
-	}
-
-	private void playGoldenVideo() {
+	private void playVideo(String filename) {
 		Intent intent = new Intent();
 		if (gallery.equals("com.android.gallery3d")) {
 			ComponentName comp = new ComponentName(gallery, gallery
@@ -287,9 +279,9 @@ public class APMService extends Service {
 		}
 
 		intent.setAction(Intent.ACTION_VIEW);
-		File file = new File(Environment.getExternalStorageDirectory()
-				.getPath() + "/golden_flower_h264_720_30p_7M.mp4");
-		intent.setDataAndType(Uri.fromFile(file), "video/*");
+		File fileVideo = new File(Environment.getExternalStorageDirectory()
+				.getPath() + "/" + filename);
+		intent.setDataAndType(Uri.fromFile(fileVideo), "video/*");
 		intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 		intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
 		startActivity(intent);
@@ -610,7 +602,7 @@ public class APMService extends Service {
 							// TODO Auto-generated method stub
 							showHomeScreen();
 							changeScreenRotationMode(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-							playGoldenVideo();
+							playVideo(VIDEO_GOLDEN_FILE_NAME);
 						}
 					}, DURATION_SMALL_DELAY);
 
@@ -623,7 +615,7 @@ public class APMService extends Service {
 				@Override
 				public void onStart() {
 					// TODO Auto-generated method stub
-					playGoldenVideo();
+					playVideo(VIDEO_GOLDEN_FILE_NAME);
 				}
 			}, DURATION_VIDEO_GOLDEN);
 
@@ -633,7 +625,7 @@ public class APMService extends Service {
 				@Override
 				public void onStart() {
 					// TODO Auto-generated method stub
-					playCarVideo();
+					playVideo(VIDEO_CAR_FILE_NAME);
 				}
 			}, DURATION_VIDEO_CAR);
 
@@ -791,7 +783,7 @@ public class APMService extends Service {
 				public void onStart() {
 					// TODO Auto-generated method stub
 					turnScreenOn();
-					
+
 					changeScreenRotationMode(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 
 					stopSelf();
