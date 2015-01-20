@@ -3,26 +3,31 @@ package com.kenji.power;
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
-import java.util.Timer;
-import java.util.TimerTask;
 
 import android.annotation.SuppressLint;
 import android.app.ActivityManager;
 import android.app.ActivityManager.RunningAppProcessInfo;
+import android.app.AlarmManager;
 import android.app.AlertDialog;
 import android.app.AlertDialog.Builder;
+import android.app.KeyguardManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.app.admin.DevicePolicyManager;
 import android.bluetooth.BluetoothAdapter;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.ActivityInfo;
 import android.graphics.PixelFormat;
 import android.net.Uri;
 import android.net.wifi.WifiManager;
+import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.IBinder;
@@ -43,6 +48,9 @@ public class APMService extends Service {
 	public static final int TEST_TYPE_FULL = 1;
 	public static final int TEST_TYPE_SINGLE = 2;
 	private int testType;
+
+	private static final String ACTION_ALARM_EXPIRED = "com.kenji.power.ALARM_EXPIRED";
+	private static final String ALARM_EXPIRED_POSITION = "alarm_expired_position";
 
 	private static final long DURATION_ZERO = 0;
 	private static final long DURATION_NORMAL = 490000;
@@ -69,6 +77,32 @@ public class APMService extends Service {
 	private SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
 	private String emailContent = "";
+
+	private final BroadcastReceiver alarmExpiredReceiver = new BroadcastReceiver() {
+		@Override
+		public void onReceive(Context context, Intent intent) {
+
+			if (intent.getAction().equals(ACTION_ALARM_EXPIRED)) {
+				currentPosition = intent.getExtras().getInt(
+						ALARM_EXPIRED_POSITION);
+				Log.w("Kenji",
+						"Test Index="
+								+ currentPosition
+								+ " time="
+								+ sdf.format(new Date(System
+										.currentTimeMillis())));
+
+				emailContent = emailContent + "Test Index=" + currentPosition
+						+ " time="
+						+ sdf.format(new Date(System.currentTimeMillis()))
+						+ '\n';
+
+				mPowerMeasurementItems.get(currentPosition).startTask();
+
+				setupNextTask(false);
+			}
+		}
+	};
 
 	private void setupNextTask(boolean forceExecute) {
 		if (currentPosition + 1 < mPowerMeasurementItems.size()
@@ -98,11 +132,20 @@ public class APMService extends Service {
 
 	@Override
 	public void onCreate() {
+
+		registerAlarmReceiver();
 		setupMeasureItems();
 
 		currentPosition = 0;
 		setupPendingIntent(currentPosition);
 
+	}
+
+	private void registerAlarmReceiver() {
+		IntentFilter filter = new IntentFilter();
+		filter.addAction(ACTION_ALARM_EXPIRED);
+
+		registerReceiver(alarmExpiredReceiver, filter);
 	}
 
 	private void setupMeasureItems() {
@@ -144,48 +187,31 @@ public class APMService extends Service {
 		mPowerMeasurementItems.add(mEndTestItem);
 	}
 
-	private void setupPendingIntent(final int position) {
-		long expiredDuration = (position == 0) ? 0 : mPowerMeasurementItems
-				.get(position - 1).getExpiredDuration();
+	private void setupPendingIntent(int position) {
+		Calendar cal = Calendar.getInstance();
+		int expiredDuration = (position == 0) ? 0
+				: (int) mPowerMeasurementItems.get(position - 1)
+						.getExpiredDuration();
 		if (testType == TEST_TYPE_QUICK && expiredDuration != 0) {
-			expiredDuration = DURATION_QUICK;
+			expiredDuration = (int) DURATION_QUICK;
 		}
-		// emailContent = emailContent + "setupPendingIntent position=" +
-		// position
-		// + " expiredDuration=" + expiredDuration + " time="
-		// + sdf.format(new Date(System.currentTimeMillis())) + '\n';
+		emailContent = emailContent + "setupPendingIntent position=" + position
+				+ " expiredDuration=" + expiredDuration + " time="
+				+ sdf.format(new Date(System.currentTimeMillis())) + '\n';
+		cal.add(Calendar.MILLISECOND, expiredDuration);
 
-		new Timer().schedule(new TimerTask() {
-			@Override
-			public void run() {
+		Intent intent = new Intent();
+		intent.setAction(ACTION_ALARM_EXPIRED);
+		Bundle bundle = new Bundle();
+		bundle.putInt(ALARM_EXPIRED_POSITION, position);
+		intent.putExtras(bundle);
 
-				mHandler.post(new Runnable() {
+		int requestCode = (int) System.currentTimeMillis();
+		PendingIntent pi = PendingIntent.getBroadcast(this, requestCode,
+				intent, PendingIntent.FLAG_ONE_SHOT);
 
-					@Override
-					public void run() {
-						// TODO Auto-generated method stub
-						Log.w("Kenji",
-								"Test Index="
-										+ currentPosition
-										+ " time="
-										+ sdf.format(new Date(System
-												.currentTimeMillis())));
-
-						emailContent = emailContent
-								+ "Test Index="
-								+ currentPosition
-								+ " time="
-								+ sdf.format(new Date(System
-										.currentTimeMillis())) + '\n';
-
-						mPowerMeasurementItems.get(currentPosition).startTask();
-
-						setupNextTask(false);
-					}
-				});
-
-			}
-		}, expiredDuration);
+		AlarmManager am = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+		am.set(AlarmManager.RTC_WAKEUP, cal.getTimeInMillis(), pi);
 	}
 
 	private void setupConnectivityState(boolean enabled) {
@@ -439,6 +465,7 @@ public class APMService extends Service {
 
 	@Override
 	public void onDestroy() {
+		unregisterReceiver(alarmExpiredReceiver);
 
 		if (switchOrientationView != null) {
 			wm = (WindowManager) getSystemService(WINDOW_SERVICE);
@@ -764,7 +791,7 @@ public class APMService extends Service {
 				public void onStart() {
 					// TODO Auto-generated method stub
 					turnScreenOn();
-
+					
 					changeScreenRotationMode(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 
 					stopSelf();
