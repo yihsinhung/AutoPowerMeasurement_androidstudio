@@ -869,34 +869,15 @@ public class APMService extends Service implements LocationListener,
 				}
 			}, DURATION_ZERO);
 
-	boolean isGPSfix = false;
-
 	@Override
 	public void onGpsStatusChanged(int event) {
 		switch (event) {
-		case GpsStatus.GPS_EVENT_SATELLITE_STATUS:
-			Log.w(MainActivity.TAG, "GPS_EVENT_SATELLITE_STATUS");
-
-			break;
 		case GpsStatus.GPS_EVENT_FIRST_FIX:
 			Log.w(MainActivity.TAG, "GPS_EVENT_FIRST_FIX");
-			Toast.makeText(getApplicationContext(), "GPS_EVENT_FIRST_FIX",
-					Toast.LENGTH_SHORT).show();
-			isGPSfix = true;
 			if (mSearchingGPSProgressDialog != null
 					&& mSearchingGPSProgressDialog.isShowing()) {
 				mSearchingGPSProgressDialog.dismiss();
 			}
-			break;
-		case GpsStatus.GPS_EVENT_STARTED:
-			Log.w(MainActivity.TAG, "GPS_EVENT_STARTED");
-			Toast.makeText(getApplicationContext(), "GPS_EVENT_STARTED",
-					Toast.LENGTH_SHORT).show();
-			break;
-		case GpsStatus.GPS_EVENT_STOPPED:
-			Log.w(MainActivity.TAG, "GPS_EVENT_STOPPED");
-			Toast.makeText(getApplicationContext(), "GPS_EVENT_STOPPED",
-					Toast.LENGTH_SHORT).show();
 			break;
 		}
 	}
@@ -904,33 +885,26 @@ public class APMService extends Service implements LocationListener,
 	@Override
 	public void onLocationChanged(final Location location) {
 		Log.w(MainActivity.TAG, "onLocationChanged");
-		Toast.makeText(getApplicationContext(), "onLocationChanged",
-				Toast.LENGTH_SHORT).show();
+
 	}
 
 	@Override
 	public void onProviderDisabled(String arg0) {
 		Log.w(MainActivity.TAG, "onProviderDisabled");
-		Toast.makeText(getApplicationContext(), "onProviderDisabled",
-				Toast.LENGTH_SHORT).show();
+
 	}
 
 	@Override
 	public void onProviderEnabled(String arg0) {
 		Log.w(MainActivity.TAG, "onProviderEnabled");
-		Toast.makeText(getApplicationContext(), "onProviderEnabled",
-				Toast.LENGTH_SHORT).show();
+
 	}
 
 	@Override
 	public void onStatusChanged(String provider, int status, Bundle extras) {
 		Log.w(MainActivity.TAG, "onStatusChanged provider = " + provider
 				+ " status=" + status + " extras=" + extras.toString());
-		Toast.makeText(
-				getApplicationContext(),
-				"onStatusChanged provider = " + provider + " status=" + status
-						+ " extras=" + extras.toString(), Toast.LENGTH_SHORT)
-				.show();
+
 	}
 
 }
