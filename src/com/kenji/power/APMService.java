@@ -24,6 +24,8 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ActivityInfo;
 import android.graphics.PixelFormat;
+import android.media.Ringtone;
+import android.media.RingtoneManager;
 import android.net.Uri;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
@@ -422,6 +424,18 @@ public class APMService extends Service {
 		startActivity(intent);
 	}
 
+	private void playSystemNotificationSound() {
+		try {
+			Uri notification = RingtoneManager
+					.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+			Ringtone r = RingtoneManager.getRingtone(getApplicationContext(),
+					notification);
+			r.play();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
 	@SuppressLint("NewApi")
 	private void buildDialog(String title, String message) {
 		// TODO Auto-generated method stub
@@ -452,6 +466,9 @@ public class APMService extends Service {
 
 		dialog.show();
 		dialog.setCancelable(false);
+		
+		playSystemNotificationSound();
+
 
 	}
 
@@ -512,8 +529,12 @@ public class APMService extends Service {
 
 				dialog.show();
 				dialog.setCancelable(false);
+				
+				playSystemNotificationSound();
 			}
 		});
+		
+		
 
 	}
 

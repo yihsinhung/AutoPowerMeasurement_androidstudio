@@ -69,6 +69,8 @@ public class MainActivity extends Activity implements View.OnClickListener {
 			File fileMusic = new File(Environment.getExternalStorageDirectory()
 					.getPath() + "/Music/" + "1. Bitter Heart.mp3");
 			intentMusic.setDataAndType(Uri.fromFile(fileMusic), "audio/*");
+			intentMusic.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+			intentMusic.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
 			startActivity(intentMusic);
 
 			break;
@@ -83,6 +85,8 @@ public class MainActivity extends Activity implements View.OnClickListener {
 			File fileVideo = new File(Environment.getExternalStorageDirectory()
 					.getPath() + "/H264_1080p_15Mbps_30fps.mp4");
 			intentVideo.setDataAndType(Uri.fromFile(fileVideo), "video/*");
+			intentVideo.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+			intentVideo.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
 			startActivity(intentVideo);
 
 			break;
