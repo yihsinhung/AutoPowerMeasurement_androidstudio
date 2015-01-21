@@ -93,6 +93,8 @@ public class APMService extends Service implements LocationListener,
 	public static final String VIDEO_CAR_FILE_NAME = "H264_1080p_15Mbps_30fps.mp4";
 
 	private boolean isGPSFromLowToHigh;
+	private boolean isGPSFromHighToLow;
+	private boolean isGPSFirstFix;
 
 	private final BroadcastReceiver alarmExpiredReceiver = new BroadcastReceiver() {
 		@Override
@@ -124,6 +126,9 @@ public class APMService extends Service implements LocationListener,
 				if (isGpsEnabled(context) && !isGPSFromLowToHigh) {
 					isGPSFromLowToHigh = true;
 					setupNextTask(true);
+				} else if (!isGpsEnabled(context) && !isGPSFromHighToLow) {
+					isGPSFromHighToLow = true;
+					setupNextTask(true); 
 				}
 			}
 		}
@@ -162,6 +167,8 @@ public class APMService extends Service implements LocationListener,
 
 		currentPosition = 0;
 		isGPSFromLowToHigh = false;
+		isGPSFromHighToLow = false;
+		isGPSFirstFix = false;
 
 		setupPendingIntent(currentPosition);
 
@@ -203,12 +210,13 @@ public class APMService extends Service implements LocationListener,
 		mPowerMeasurementItems.add(mVideoCarItem);
 		mPowerMeasurementItems.add(mVideoCarItem);
 
-		mPowerMeasurementItems.add(mShowGPSDialogItem);
+		mPowerMeasurementItems.add(mTurnGPSOnDialogItem);
 		mPowerMeasurementItems.add(mSearchingGPSDialogItem);
 		mPowerMeasurementItems.add(mShowConnectivityDialogItem);
 		mPowerMeasurementItems.add(mSuspendWithConnectivityItem);
 
-		mPowerMeasurementItems.add(mShowAirplaneDialogItem);
+		mPowerMeasurementItems.add(mTurnGPSOffDialogItem);
+		mPowerMeasurementItems.add(mTurnAirplaneOffDialogItem);
 		mPowerMeasurementItems.add(mSuspendWithModemItem);
 
 		mPowerMeasurementItems.add(mEndTestItem);
@@ -500,13 +508,6 @@ public class APMService extends Service implements LocationListener,
 	public void onDestroy() {
 		unregisterReceiver(alarmExpiredReceiver);
 
-		if (mLocationManager != null) {
-			mLocationManager.removeGpsStatusListener(APMService.this);
-			mLocationManager.removeUpdates(APMService.this);
-			Toast.makeText(APMService.this, "Remove location update",
-					Toast.LENGTH_SHORT).show();
-		}
-
 		if (switchOrientationView != null) {
 			wm = (WindowManager) getSystemService(WINDOW_SERVICE);
 			wm.removeView(switchOrientationView);
@@ -744,7 +745,7 @@ public class APMService extends Service implements LocationListener,
 				}
 			}, DURATION_ZERO);
 
-	PowerMeasurementItem mShowGPSDialogItem = new PowerMeasurementItem(
+	PowerMeasurementItem mTurnGPSOnDialogItem = new PowerMeasurementItem(
 			new PowerMeasurementItem.OnAlarmReceivedListener() {
 
 				@Override
@@ -755,10 +756,10 @@ public class APMService extends Service implements LocationListener,
 					setupConnectivityState(true);
 
 					buildGPSDialog(
-							getResources()
-									.getString(R.string.service_gps_title),
 							getResources().getString(
-									R.string.service_gps_detail));
+									R.string.service_turn_gps_on_title),
+							getResources().getString(
+									R.string.service_turn_gps_on_detail));
 				}
 			}, DURATION_ZERO);
 
@@ -829,19 +830,32 @@ public class APMService extends Service implements LocationListener,
 				}
 			}, DURATION_LONG);
 
-	PowerMeasurementItem mShowAirplaneDialogItem = new PowerMeasurementItem(
+	PowerMeasurementItem mTurnGPSOffDialogItem = new PowerMeasurementItem(
 			new PowerMeasurementItem.OnAlarmReceivedListener() {
 
 				@Override
 				public void onStart() {
 					setupConnectivityState(false);
-
 					turnScreenOn();
+					buildGPSDialog(
+							getResources().getString(
+									R.string.service_turn_gps_off_title),
+							getResources().getString(
+									R.string.service_turn_gps_off_detail));
+				}
+			}, DURATION_ZERO);
+
+	PowerMeasurementItem mTurnAirplaneOffDialogItem = new PowerMeasurementItem(
+			new PowerMeasurementItem.OnAlarmReceivedListener() {
+
+				@Override
+				public void onStart() {
+					showHomeScreen();
 					buildDialog(
 							getResources().getString(
-									R.string.service_close_airplane_title),
+									R.string.service_turn_airplane_off_title),
 							getResources().getString(
-									R.string.service_close_airplane_detail));
+									R.string.service_turn_airplane_off_detail));
 				}
 			}, DURATION_ZERO);
 
@@ -874,10 +888,20 @@ public class APMService extends Service implements LocationListener,
 		switch (event) {
 		case GpsStatus.GPS_EVENT_FIRST_FIX:
 			Log.w(MainActivity.TAG, "GPS_EVENT_FIRST_FIX");
-			if (mSearchingGPSProgressDialog != null
-					&& mSearchingGPSProgressDialog.isShowing()) {
-				mSearchingGPSProgressDialog.dismiss();
+			if (!isGPSFirstFix) {
+				isGPSFirstFix = true;
+				if (mSearchingGPSProgressDialog != null
+						&& mSearchingGPSProgressDialog.isShowing()) {
+					mSearchingGPSProgressDialog.dismiss();
+				}
+
+				if (mLocationManager != null) {
+					mLocationManager.removeGpsStatusListener(APMService.this);
+					mLocationManager.removeUpdates(APMService.this);
+				}
+				setupNextTask(true);
 			}
+
 			break;
 		}
 	}

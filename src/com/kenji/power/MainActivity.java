@@ -45,7 +45,6 @@ public class MainActivity extends Activity implements View.OnClickListener {
 	}
 
 	private void findViews() {
-		// TODO Auto-generated method stub
 		step1MusicButton = (Button) findViewById(R.id.buttonStep1Music);
 		step1VideoButton = (Button) findViewById(R.id.buttonStep1Video);
 		step2FastButton = (Button) findViewById(R.id.buttonStep2Fast);
