@@ -42,8 +42,6 @@
 
         <service android:name="APMService" >
         </service>
-        <service android:name="UpdateService" >
-        </service>
 
         <receiver
             android:name=".deviceAdminReceiver"
