@@ -62,6 +62,10 @@
     <string name="service_test_complete_detail">您可至電腦端的 Excel 檔案觀察此次測量的結果，謝謝!</string>
     <string name="service_close_airplane_title">請關閉飛航模式以及GPS</string>
     <string name="service_close_airplane_detail">關閉飛航模式以及GPS後同時按下確定與電腦端的按鈕開始測量</string>
+    <string name="service_gps_title">開啟 GPS</string>
+    <string name="service_gps_detail">Wifi 以及藍芽已開啟，GPS 需要手動開啟</string>
+    <string name="service_gps_setting">前往位置設定</string>
+    <string name="service_gps_searching">等待 GPS 第一次定位中&#8230;</string>
     <string name="service_connectivity_title">開啟 GPS</string>
     <string name="service_connectivity_detail">確認 Wifi連上網路、藍芽及GPS 開啟後同時按下確定與電腦端的按鈕開始測量</string>
 

@@ -13,6 +13,7 @@ import android.app.AlarmManager;
 import android.app.AlertDialog;
 import android.app.AlertDialog.Builder;
 import android.app.PendingIntent;
+import android.app.ProgressDialog;
 import android.app.Service;
 import android.app.admin.DevicePolicyManager;
 import android.bluetooth.BluetoothAdapter;
@@ -24,6 +25,10 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ActivityInfo;
 import android.graphics.PixelFormat;
+import android.location.GpsStatus;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.media.Ringtone;
 import android.media.RingtoneManager;
 import android.net.Uri;
@@ -35,6 +40,8 @@ import android.os.IBinder;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
 import android.provider.Settings;
+import android.provider.Settings.Secure;
+import android.provider.Settings.SettingNotFoundException;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
@@ -42,7 +49,8 @@ import android.view.WindowManager.LayoutParams;
 import android.widget.Toast;
 
 @SuppressLint("InlinedApi")
-public class APMService extends Service {
+public class APMService extends Service implements LocationListener,
+		GpsStatus.Listener {
 
 	public static final String ACTIVITY_PARA_TEST_TYPE = "activity_para_test_type";
 	public static final int TEST_TYPE_QUICK = 0;
@@ -65,6 +73,8 @@ public class APMService extends Service {
 	private static final long DURATION_QUICK = 5000;
 
 	Handler mHandler = new Handler();
+	ProgressDialog mSearchingGPSProgressDialog;
+	LocationManager mLocationManager;
 
 	PowerManager pm;
 	WakeLock wakeLock;
@@ -82,11 +92,15 @@ public class APMService extends Service {
 	public static final String VIDEO_GOLDEN_FILE_NAME = "golden_flower_h264_720_30p_7M.mp4";
 	public static final String VIDEO_CAR_FILE_NAME = "H264_1080p_15Mbps_30fps.mp4";
 
+	private boolean isGPSFromLowToHigh;
+
 	private final BroadcastReceiver alarmExpiredReceiver = new BroadcastReceiver() {
 		@Override
 		public void onReceive(Context context, Intent intent) {
 
-			if (intent.getAction().equals(ACTION_ALARM_EXPIRED)) {
+			String intentAction = intent.getAction();
+
+			if (intentAction.equals(ACTION_ALARM_EXPIRED)) {
 				currentPosition = intent.getExtras().getInt(
 						ALARM_EXPIRED_POSITION);
 				Log.d(MainActivity.TAG,
@@ -104,6 +118,13 @@ public class APMService extends Service {
 				mPowerMeasurementItems.get(currentPosition).startTask();
 
 				setupNextTask(false);
+			} else if (intentAction
+					.equals(LocationManager.PROVIDERS_CHANGED_ACTION)) {
+
+				if (isGpsEnabled(context) && !isGPSFromLowToHigh) {
+					isGPSFromLowToHigh = true;
+					setupNextTask(true);
+				}
 			}
 		}
 	};
@@ -115,7 +136,7 @@ public class APMService extends Service {
 			currentPosition++;
 			setupPendingIntent(currentPosition);
 		} else {
-			Log.w("Kenji", "提醒視窗跳出");
+			Log.w(MainActivity.TAG, "提醒視窗跳出");
 			emailContent = emailContent + "提醒視窗跳出" + " time="
 					+ sdf.format(new Date(System.currentTimeMillis())) + '\n';
 		}
@@ -125,11 +146,10 @@ public class APMService extends Service {
 
 	@Override
 	public int onStartCommand(Intent intent, int flags, int startId) {
-		// TODO do something useful
 		gallery = intent.getExtras().getString("gallery", "");
 		testType = intent.getExtras().getInt(ACTIVITY_PARA_TEST_TYPE,
 				TEST_TYPE_QUICK);
-		Log.w("Kenji", "testType=" + testType);
+		Log.d(MainActivity.TAG, "testType=" + testType);
 
 		return Service.START_NOT_STICKY;
 	}
@@ -141,6 +161,8 @@ public class APMService extends Service {
 		setupMeasureItems();
 
 		currentPosition = 0;
+		isGPSFromLowToHigh = false;
+
 		setupPendingIntent(currentPosition);
 
 	}
@@ -148,12 +170,11 @@ public class APMService extends Service {
 	private void registerAlarmReceiver() {
 		IntentFilter filter = new IntentFilter();
 		filter.addAction(ACTION_ALARM_EXPIRED);
-
+		filter.addAction(LocationManager.PROVIDERS_CHANGED_ACTION);
 		registerReceiver(alarmExpiredReceiver, filter);
 	}
 
 	private void setupMeasureItems() {
-		// TODO Auto-generated method stub
 		mPowerMeasurementItems.add(mShowStartDialogItem);
 		mPowerMeasurementItems.add(mShowHomeItem);
 		mPowerMeasurementItems.add(mShowSettingItem);
@@ -182,6 +203,8 @@ public class APMService extends Service {
 		mPowerMeasurementItems.add(mVideoCarItem);
 		mPowerMeasurementItems.add(mVideoCarItem);
 
+		mPowerMeasurementItems.add(mShowGPSDialogItem);
+		mPowerMeasurementItems.add(mSearchingGPSDialogItem);
 		mPowerMeasurementItems.add(mShowConnectivityDialogItem);
 		mPowerMeasurementItems.add(mSuspendWithConnectivityItem);
 
@@ -230,45 +253,8 @@ public class APMService extends Service {
 
 		if (enabled) {
 			BluetoothAdapter.getDefaultAdapter().enable();
-			turnGPSOn();
 		} else {
 			BluetoothAdapter.getDefaultAdapter().disable();
-			turnGPSOff();
-		}
-	}
-
-	private void turnGPSOn() {
-
-		try {
-			String provider = Settings.Secure.getString(getContentResolver(),
-					Settings.Secure.LOCATION_PROVIDERS_ALLOWED);
-
-			if (!provider.contains("gps")) { // if gps is disabled
-				final Intent poke = new Intent();
-				poke.setClassName("com.android.settings",
-						"com.android.settings.widget.SettingsAppWidgetProvider");
-				poke.addCategory(Intent.CATEGORY_ALTERNATIVE);
-				poke.setData(Uri.parse("3"));
-				sendBroadcast(poke);
-			}
-		} catch (Exception e) {
-			// TODO: handle exception
-			e.printStackTrace();
-		}
-
-	}
-
-	private void turnGPSOff() {
-		String provider = Settings.Secure.getString(getContentResolver(),
-				Settings.Secure.LOCATION_PROVIDERS_ALLOWED);
-
-		if (provider.contains("gps")) { // if gps is enabled
-			final Intent poke = new Intent();
-			poke.setClassName("com.android.settings",
-					"com.android.settings.widget.SettingsAppWidgetProvider");
-			poke.addCategory(Intent.CATEGORY_ALTERNATIVE);
-			poke.setData(Uri.parse("3"));
-			sendBroadcast(poke);
 		}
 	}
 
@@ -291,7 +277,6 @@ public class APMService extends Service {
 	}
 
 	private void changeScreenRotationMode(int rotation) {
-		// TODO Auto-generated method stub
 		if (wm == null) {
 			wm = (WindowManager) getSystemService(WINDOW_SERVICE);
 		}
@@ -321,7 +306,6 @@ public class APMService extends Service {
 	}
 
 	private void turnScreenOn() {
-		// TODO Auto-generated method stub
 		Intent intent = new Intent();
 		intent.setClass(getApplicationContext(), TurnScreenOnActivity.class);
 		intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -345,8 +329,6 @@ public class APMService extends Service {
 	}
 
 	private void playMusicTest() {
-		// TODO Auto-generated method stub
-
 		Intent intent = new Intent();
 		intent.setAction(Intent.ACTION_VIEW);
 		File file = new File(Environment.getExternalStorageDirectory()
@@ -361,8 +343,6 @@ public class APMService extends Service {
 	}
 
 	private void idleTest() {
-		// TODO Auto-generated method stub
-
 		pm = (PowerManager) getApplicationContext().getSystemService(
 				Context.POWER_SERVICE);
 		wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MyWakeLock");
@@ -371,8 +351,6 @@ public class APMService extends Service {
 	}
 
 	private void LockScreenTest() {
-		// TODO Auto-generated method stub
-
 		ComponentName componentName = new ComponentName(
 				getApplicationContext(), deviceAdminReceiver.class);
 		final DevicePolicyManager devicePolicyManager = (DevicePolicyManager) getSystemService(Context.DEVICE_POLICY_SERVICE);
@@ -395,7 +373,6 @@ public class APMService extends Service {
 
 				@Override
 				public void run() {
-					// TODO Auto-generated method stub
 					devicePolicyManager.lockNow(); // 鎖屏
 				}
 			}, 100);
@@ -405,7 +382,6 @@ public class APMService extends Service {
 	}
 
 	private void showSettingScreen() {
-		// TODO Auto-generated method stub
 		Intent intent = new Intent();
 		ComponentName comp = new ComponentName("com.android.settings",
 				"com.android.settings.Settings");
@@ -416,7 +392,6 @@ public class APMService extends Service {
 	}
 
 	private void showHomeScreen() {
-		// TODO Auto-generated method stub
 		Intent intent = new Intent(Intent.ACTION_MAIN);
 		intent.addCategory(Intent.CATEGORY_HOME);
 		intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -438,7 +413,6 @@ public class APMService extends Service {
 
 	@SuppressLint("NewApi")
 	private void buildDialog(String title, String message) {
-		// TODO Auto-generated method stub
 		Builder builder = new AlertDialog.Builder(getApplicationContext(),
 				AlertDialog.THEME_HOLO_LIGHT);
 		builder.setTitle(title);
@@ -466,15 +440,72 @@ public class APMService extends Service {
 
 		dialog.show();
 		dialog.setCancelable(false);
-		
+
 		playSystemNotificationSound();
 
+	}
 
+	private void buildGPSDialog(String title, String message) {
+		Builder builder = new AlertDialog.Builder(getApplicationContext(),
+				AlertDialog.THEME_HOLO_LIGHT);
+		builder.setTitle(title);
+		builder.setMessage(message);
+		builder.setNeutralButton(
+				getResources().getString(R.string.service_gps_setting),
+				new DialogInterface.OnClickListener() {
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+						Intent intent = new Intent(
+								Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+						intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+						intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+						startActivity(intent);
+					}
+				});
+		final AlertDialog dialog = builder.create();
+		// 在dialog show方法之前添加如下代碼，表示該dialog是一個系統的dialog
+		dialog.getWindow().setType(
+				(WindowManager.LayoutParams.TYPE_SYSTEM_ALERT));
+
+		dialog.show();
+		dialog.setCancelable(false);
+
+		playSystemNotificationSound();
+
+	}
+
+	public static boolean isGpsEnabled(Context context) {
+
+		final int locationMode;
+		try {
+			locationMode = Secure.getInt(context.getContentResolver(),
+					Secure.LOCATION_MODE);
+		} catch (SettingNotFoundException e) {
+			e.printStackTrace();
+			return false;
+		}
+		switch (locationMode) {
+
+		case Secure.LOCATION_MODE_HIGH_ACCURACY:
+		case Secure.LOCATION_MODE_SENSORS_ONLY:
+			return true;
+		case Secure.LOCATION_MODE_BATTERY_SAVING:
+		case Secure.LOCATION_MODE_OFF:
+		default:
+			return false;
+		}
 	}
 
 	@Override
 	public void onDestroy() {
 		unregisterReceiver(alarmExpiredReceiver);
+
+		if (mLocationManager != null) {
+			mLocationManager.removeGpsStatusListener(APMService.this);
+			mLocationManager.removeUpdates(APMService.this);
+			Toast.makeText(APMService.this, "Remove location update",
+					Toast.LENGTH_SHORT).show();
+		}
 
 		if (switchOrientationView != null) {
 			wm = (WindowManager) getSystemService(WINDOW_SERVICE);
@@ -514,7 +545,7 @@ public class APMService extends Service {
 										emailContent);
 
 								Intent new_intent = Intent.createChooser(
-										shareIntent, "Share via");
+										shareIntent, "Recotd Timestamp");
 								new_intent
 										.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 								getApplicationContext().startActivity(
@@ -529,18 +560,15 @@ public class APMService extends Service {
 
 				dialog.show();
 				dialog.setCancelable(false);
-				
+
 				playSystemNotificationSound();
 			}
 		});
-		
-		
 
 	}
 
 	@Override
 	public IBinder onBind(Intent arg0) {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
@@ -549,7 +577,6 @@ public class APMService extends Service {
 
 				@Override
 				public void onStart() {
-					// TODO Auto-generated method stub
 					showHomeScreen();
 
 					buildDialog(
@@ -565,7 +592,6 @@ public class APMService extends Service {
 
 				@Override
 				public void onStart() {
-					// TODO Auto-generated method stub
 					Toast.makeText(
 							APMService.this,
 							getResources().getString(
@@ -580,7 +606,6 @@ public class APMService extends Service {
 
 				@Override
 				public void onStart() {
-					// TODO Auto-generated method stub
 					showSettingScreen();
 				}
 			}, DURATION_NORMAL);
@@ -590,7 +615,6 @@ public class APMService extends Service {
 
 				@Override
 				public void onStart() {
-					// TODO Auto-generated method stub
 					showHomeScreen();
 					killBackgroundProcess("com.android.settings");
 					LockScreenTest();
@@ -603,7 +627,6 @@ public class APMService extends Service {
 
 				@Override
 				public void onStart() {
-					// TODO Auto-generated method stub
 					playMusicTest();
 				}
 			}, DURATION_MUSIC);
@@ -613,14 +636,12 @@ public class APMService extends Service {
 
 				@Override
 				public void onStart() {
-					// TODO Auto-generated method stub
 					turnScreenOn();
 
 					mHandler.postDelayed(new Runnable() {
 
 						@Override
 						public void run() {
-							// TODO Auto-generated method stub
 							showHomeScreen();
 							changeScreenRotationMode(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
 							playVideo(VIDEO_GOLDEN_FILE_NAME);
@@ -635,7 +656,6 @@ public class APMService extends Service {
 
 				@Override
 				public void onStart() {
-					// TODO Auto-generated method stub
 					playVideo(VIDEO_GOLDEN_FILE_NAME);
 				}
 			}, DURATION_VIDEO_GOLDEN);
@@ -645,7 +665,6 @@ public class APMService extends Service {
 
 				@Override
 				public void onStart() {
-					// TODO Auto-generated method stub
 					playVideo(VIDEO_CAR_FILE_NAME);
 				}
 			}, DURATION_VIDEO_CAR);
@@ -655,7 +674,6 @@ public class APMService extends Service {
 
 				@Override
 				public void onStart() {
-					// TODO Auto-generated method stub
 					showHomeScreen();
 					changeScreenRotationMode(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 					idleTest();
@@ -668,7 +686,6 @@ public class APMService extends Service {
 
 				@Override
 				public void onStart() {
-					// TODO Auto-generated method stub
 					if (wakeLock != null && wakeLock.isHeld()) {
 						Log.w("Kenji", "Release wakelock");
 						wakeLock.release();
@@ -682,7 +699,6 @@ public class APMService extends Service {
 
 				@Override
 				public void onStart() {
-					// TODO Auto-generated method stub
 					showHomeScreen();
 					turnScreenOn();
 					buildDialog(
@@ -698,7 +714,6 @@ public class APMService extends Service {
 
 				@Override
 				public void onStart() {
-					// TODO Auto-generated method stub
 					killBackgroundProcess(gallery);
 					LockScreenTest();
 					playMusicTest();
@@ -710,14 +725,12 @@ public class APMService extends Service {
 
 				@Override
 				public void onStart() {
-					// TODO Auto-generated method stub
 					turnScreenOn();
 
 					mHandler.postDelayed(new Runnable() {
 
 						@Override
 						public void run() {
-							// TODO Auto-generated method stub
 							showHomeScreen();
 
 							buildDialog(
@@ -731,12 +744,64 @@ public class APMService extends Service {
 				}
 			}, DURATION_ZERO);
 
+	PowerMeasurementItem mShowGPSDialogItem = new PowerMeasurementItem(
+			new PowerMeasurementItem.OnAlarmReceivedListener() {
+
+				@Override
+				public void onStart() {
+					showHomeScreen();
+					changeScreenRotationMode(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+
+					setupConnectivityState(true);
+
+					buildGPSDialog(
+							getResources()
+									.getString(R.string.service_gps_title),
+							getResources().getString(
+									R.string.service_gps_detail));
+				}
+			}, DURATION_ZERO);
+
+	PowerMeasurementItem mSearchingGPSDialogItem = new PowerMeasurementItem(
+			new PowerMeasurementItem.OnAlarmReceivedListener() {
+
+				@Override
+				public void onStart() {
+					mHandler.postDelayed(new Runnable() {
+
+						@Override
+						public void run() {
+							showHomeScreen();
+							mSearchingGPSProgressDialog = new ProgressDialog(
+									getApplicationContext(),
+									AlertDialog.THEME_HOLO_LIGHT);
+							mSearchingGPSProgressDialog
+									.getWindow()
+									.setType(
+											(WindowManager.LayoutParams.TYPE_SYSTEM_ALERT));
+							mSearchingGPSProgressDialog.setCancelable(false);
+							mSearchingGPSProgressDialog
+									.setMessage(getResources().getString(
+											R.string.service_gps_searching));
+							mSearchingGPSProgressDialog.show();
+
+							mLocationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+							mLocationManager.requestLocationUpdates(
+									LocationManager.GPS_PROVIDER, 1000, 10,
+									APMService.this);
+							mLocationManager
+									.addGpsStatusListener(APMService.this);
+
+						}
+					}, DURATION_SMALL_DELAY);
+				}
+			}, DURATION_ZERO);
+
 	PowerMeasurementItem mShowConnectivityDialogItem = new PowerMeasurementItem(
 			new PowerMeasurementItem.OnAlarmReceivedListener() {
 
 				@Override
 				public void onStart() {
-					// TODO Auto-generated method stub
 					showHomeScreen();
 					changeScreenRotationMode(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 
@@ -756,8 +821,6 @@ public class APMService extends Service {
 
 				@Override
 				public void onStart() {
-					// TODO Auto-generated method stub
-
 					if (wakeLock != null && wakeLock.isHeld()) {
 						Log.w("Kenji", "Release wakelock");
 						wakeLock.release();
@@ -771,7 +834,6 @@ public class APMService extends Service {
 
 				@Override
 				public void onStart() {
-					// TODO Auto-generated method stub
 					setupConnectivityState(false);
 
 					turnScreenOn();
@@ -788,7 +850,6 @@ public class APMService extends Service {
 
 				@Override
 				public void onStart() {
-					// TODO Auto-generated method stub
 					if (wakeLock != null && wakeLock.isHeld()) {
 						Log.w("Kenji", "Release wakelock");
 						wakeLock.release();
@@ -802,14 +863,74 @@ public class APMService extends Service {
 
 				@Override
 				public void onStart() {
-					// TODO Auto-generated method stub
 					turnScreenOn();
-
 					changeScreenRotationMode(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-
 					stopSelf();
-
 				}
 			}, DURATION_ZERO);
+
+	boolean isGPSfix = false;
+
+	@Override
+	public void onGpsStatusChanged(int event) {
+		switch (event) {
+		case GpsStatus.GPS_EVENT_SATELLITE_STATUS:
+			Log.w(MainActivity.TAG, "GPS_EVENT_SATELLITE_STATUS");
+
+			break;
+		case GpsStatus.GPS_EVENT_FIRST_FIX:
+			Log.w(MainActivity.TAG, "GPS_EVENT_FIRST_FIX");
+			Toast.makeText(getApplicationContext(), "GPS_EVENT_FIRST_FIX",
+					Toast.LENGTH_SHORT).show();
+			isGPSfix = true;
+			if (mSearchingGPSProgressDialog != null
+					&& mSearchingGPSProgressDialog.isShowing()) {
+				mSearchingGPSProgressDialog.dismiss();
+			}
+			break;
+		case GpsStatus.GPS_EVENT_STARTED:
+			Log.w(MainActivity.TAG, "GPS_EVENT_STARTED");
+			Toast.makeText(getApplicationContext(), "GPS_EVENT_STARTED",
+					Toast.LENGTH_SHORT).show();
+			break;
+		case GpsStatus.GPS_EVENT_STOPPED:
+			Log.w(MainActivity.TAG, "GPS_EVENT_STOPPED");
+			Toast.makeText(getApplicationContext(), "GPS_EVENT_STOPPED",
+					Toast.LENGTH_SHORT).show();
+			break;
+		}
+	}
+
+	@Override
+	public void onLocationChanged(final Location location) {
+		Log.w(MainActivity.TAG, "onLocationChanged");
+		Toast.makeText(getApplicationContext(), "onLocationChanged",
+				Toast.LENGTH_SHORT).show();
+	}
+
+	@Override
+	public void onProviderDisabled(String arg0) {
+		Log.w(MainActivity.TAG, "onProviderDisabled");
+		Toast.makeText(getApplicationContext(), "onProviderDisabled",
+				Toast.LENGTH_SHORT).show();
+	}
+
+	@Override
+	public void onProviderEnabled(String arg0) {
+		Log.w(MainActivity.TAG, "onProviderEnabled");
+		Toast.makeText(getApplicationContext(), "onProviderEnabled",
+				Toast.LENGTH_SHORT).show();
+	}
+
+	@Override
+	public void onStatusChanged(String provider, int status, Bundle extras) {
+		Log.w(MainActivity.TAG, "onStatusChanged provider = " + provider
+				+ " status=" + status + " extras=" + extras.toString());
+		Toast.makeText(
+				getApplicationContext(),
+				"onStatusChanged provider = " + provider + " status=" + status
+						+ " extras=" + extras.toString(), Toast.LENGTH_SHORT)
+				.show();
+	}
 
 }
