@@ -12,11 +12,14 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
+import android.content.res.Configuration;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
+import android.view.Surface;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.Toast;
 
@@ -42,6 +45,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
 
 		findViews();
 		getPackages();
+
 	}
 
 	private void findViews() {
@@ -143,6 +147,8 @@ public class MainActivity extends Activity implements View.OnClickListener {
 				Bundle bundle = new Bundle();
 				bundle.putString("gallery", galleryPackagename);
 				bundle.putInt(APMService.ACTIVITY_PARA_TEST_TYPE, testType);
+				bundle.putInt(APMService.ACTIVITY_PARA_ORIENTATION,
+						getDeviceDefaultOrientation());
 				intent.putExtras(bundle);
 				intent.setClass(getApplicationContext(), APMService.class);
 				getApplicationContext().startService(intent);
@@ -218,4 +224,19 @@ public class MainActivity extends Activity implements View.OnClickListener {
 		}
 	}
 
+	public int getDeviceDefaultOrientation() {
+
+		WindowManager windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
+
+		Configuration config = getResources().getConfiguration();
+
+		int rotation = windowManager.getDefaultDisplay().getRotation();
+
+		if (((rotation == Surface.ROTATION_0 || rotation == Surface.ROTATION_180) && config.orientation == Configuration.ORIENTATION_LANDSCAPE)
+				|| ((rotation == Surface.ROTATION_90 || rotation == Surface.ROTATION_270) && config.orientation == Configuration.ORIENTATION_PORTRAIT)) {
+			return Configuration.ORIENTATION_LANDSCAPE;
+		} else {
+			return Configuration.ORIENTATION_PORTRAIT;
+		}
+	}
 }

@@ -24,6 +24,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ActivityInfo;
+import android.content.res.Configuration;
 import android.graphics.PixelFormat;
 import android.location.GpsStatus;
 import android.location.Location;
@@ -57,6 +58,9 @@ public class APMService extends Service implements LocationListener,
 	public static final int TEST_TYPE_FULL = 1;
 	public static final int TEST_TYPE_SINGLE = 2;
 	private int testType;
+
+	public static final String ACTIVITY_PARA_ORIENTATION = "activity_para_orientation";
+	private int orientation;
 
 	private static final String ACTION_ALARM_EXPIRED = "com.kenji.power.ALARM_EXPIRED";
 	private static final String ALARM_EXPIRED_POSITION = "alarm_expired_position";
@@ -128,7 +132,7 @@ public class APMService extends Service implements LocationListener,
 					setupNextTask(true);
 				} else if (!isGpsEnabled(context) && !isGPSFromHighToLow) {
 					isGPSFromHighToLow = true;
-					setupNextTask(true); 
+					setupNextTask(true);
 				}
 			}
 		}
@@ -141,7 +145,7 @@ public class APMService extends Service implements LocationListener,
 			currentPosition++;
 			setupPendingIntent(currentPosition);
 		} else {
-			Log.w(MainActivity.TAG, "提醒視窗跳出");
+			Log.d(MainActivity.TAG, "提醒視窗跳出");
 			emailContent = emailContent + "提醒視窗跳出" + " time="
 					+ sdf.format(new Date(System.currentTimeMillis())) + '\n';
 		}
@@ -154,6 +158,8 @@ public class APMService extends Service implements LocationListener,
 		gallery = intent.getExtras().getString("gallery", "");
 		testType = intent.getExtras().getInt(ACTIVITY_PARA_TEST_TYPE,
 				TEST_TYPE_QUICK);
+		orientation = intent.getExtras().getInt(ACTIVITY_PARA_ORIENTATION,
+				Configuration.ORIENTATION_PORTRAIT);
 		Log.d(MainActivity.TAG, "testType=" + testType);
 
 		return Service.START_NOT_STICKY;
@@ -162,16 +168,19 @@ public class APMService extends Service implements LocationListener,
 	@Override
 	public void onCreate() {
 
+		initVariables();
 		registerAlarmReceiver();
 		setupMeasureItems();
 
+		setupPendingIntent(currentPosition);
+
+	}
+
+	private void initVariables() {
 		currentPosition = 0;
 		isGPSFromLowToHigh = false;
 		isGPSFromHighToLow = false;
 		isGPSFirstFix = false;
-
-		setupPendingIntent(currentPosition);
-
 	}
 
 	private void registerAlarmReceiver() {
@@ -182,6 +191,7 @@ public class APMService extends Service implements LocationListener,
 	}
 
 	private void setupMeasureItems() {
+		// normal test items
 		mPowerMeasurementItems.add(mShowStartDialogItem);
 		mPowerMeasurementItems.add(mShowHomeItem);
 		mPowerMeasurementItems.add(mShowSettingItem);
@@ -197,11 +207,13 @@ public class APMService extends Service implements LocationListener,
 		mPowerMeasurementItems.add(mCpuIdleItem);
 		mPowerMeasurementItems.add(mSuspendItem);
 
+		// audio playback with earphone plug in
 		mPowerMeasurementItems.add(mShowEarphoneDialogItem);
 		mPowerMeasurementItems.add(mEarphoneItem);
 		mPowerMeasurementItems.add(mMusicItem);
 		mPowerMeasurementItems.add(mMusicItem);
 
+		// video playback with HDMI connected
 		mPowerMeasurementItems.add(mShowHDMIDialogItem);
 		mPowerMeasurementItems.add(mVideoGoldenFirstTimeItem);
 		mPowerMeasurementItems.add(mVideoGoldenItem);
@@ -210,14 +222,16 @@ public class APMService extends Service implements LocationListener,
 		mPowerMeasurementItems.add(mVideoCarItem);
 		mPowerMeasurementItems.add(mVideoCarItem);
 
+		// suspend with connectivity
 		mPowerMeasurementItems.add(mTurnGPSOnDialogItem);
 		mPowerMeasurementItems.add(mSearchingGPSDialogItem);
 		mPowerMeasurementItems.add(mShowConnectivityDialogItem);
-		mPowerMeasurementItems.add(mSuspendWithConnectivityItem);
+		mPowerMeasurementItems.add(mSuspendLongItem);
 
+		// suspend with modem on
 		mPowerMeasurementItems.add(mTurnGPSOffDialogItem);
 		mPowerMeasurementItems.add(mTurnAirplaneOffDialogItem);
-		mPowerMeasurementItems.add(mSuspendWithModemItem);
+		mPowerMeasurementItems.add(mSuspendLongItem);
 
 		mPowerMeasurementItems.add(mEndTestItem);
 	}
@@ -235,10 +249,6 @@ public class APMService extends Service implements LocationListener,
 				"setupPendingIntent position=" + position + " expiredDuration="
 						+ expiredDuration + " time="
 						+ sdf.format(new Date(System.currentTimeMillis())));
-		// emailContent = emailContent + "setupPendingIntent position=" +
-		// position
-		// + " expiredDuration=" + expiredDuration + " time="
-		// + sdf.format(new Date(System.currentTimeMillis())) + '\n';
 		cal.add(Calendar.MILLISECOND, expiredDuration);
 
 		Intent intent = new Intent();
@@ -285,32 +295,34 @@ public class APMService extends Service implements LocationListener,
 	}
 
 	private void changeScreenRotationMode(int rotation) {
-		if (wm == null) {
-			wm = (WindowManager) getSystemService(WINDOW_SERVICE);
+		if (orientation == Configuration.ORIENTATION_PORTRAIT) {
+			if (wm == null) {
+				wm = (WindowManager) getSystemService(WINDOW_SERVICE);
+			}
+
+			if (switchOrientationView == null) {
+				switchOrientationView = new View(getApplicationContext());
+
+				int dimension = 0;
+				int pixelFormat = PixelFormat.TRANSLUCENT;
+				final WindowManager.LayoutParams params = new WindowManager.LayoutParams(
+						dimension,
+						dimension,
+						WindowManager.LayoutParams.TYPE_SYSTEM_OVERLAY,
+						WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+								| WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+						pixelFormat);
+				params.screenOrientation = rotation;
+
+				wm.addView(switchOrientationView, params);
+			} else {
+				final WindowManager.LayoutParams params = (LayoutParams) switchOrientationView
+						.getLayoutParams();
+				params.screenOrientation = rotation;
+
+				wm.updateViewLayout(switchOrientationView, params);
+			}
 		}
-
-		if (switchOrientationView == null) {
-			switchOrientationView = new View(getApplicationContext());
-
-			int dimension = 0;
-			int pixelFormat = PixelFormat.TRANSLUCENT;
-			final WindowManager.LayoutParams params = new WindowManager.LayoutParams(
-					dimension, dimension,
-					WindowManager.LayoutParams.TYPE_SYSTEM_OVERLAY,
-					WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
-							| WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-					pixelFormat);
-			params.screenOrientation = rotation;
-
-			wm.addView(switchOrientationView, params);
-		} else {
-			final WindowManager.LayoutParams params = (LayoutParams) switchOrientationView
-					.getLayoutParams();
-			params.screenOrientation = rotation;
-
-			wm.updateViewLayout(switchOrientationView, params);
-		}
-
 	}
 
 	private void turnScreenOn() {
@@ -319,18 +331,13 @@ public class APMService extends Service implements LocationListener,
 		intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 		intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
 		startActivity(intent);
-
 	}
 
 	private void killBackgroundProcess(String processName) {
 		ActivityManager manager = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
 
 		for (RunningAppProcessInfo process : manager.getRunningAppProcesses()) {
-
 			if (process.processName.equals(processName)) {
-				// Toast.makeText(MyService.this, process.processName,
-				// Toast.LENGTH_SHORT).show();
-
 				manager.killBackgroundProcesses(processName);
 			}
 		}
@@ -345,9 +352,6 @@ public class APMService extends Service implements LocationListener,
 		intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 		intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
 		startActivity(intent);
-
-		killBackgroundProcess("com.android.settings");
-
 	}
 
 	private void idleTest() {
@@ -355,7 +359,6 @@ public class APMService extends Service implements LocationListener,
 				Context.POWER_SERVICE);
 		wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MyWakeLock");
 		wakeLock.acquire();
-
 	}
 
 	private void LockScreenTest() {
@@ -384,9 +387,7 @@ public class APMService extends Service implements LocationListener,
 					devicePolicyManager.lockNow(); // 鎖屏
 				}
 			}, 100);
-
 		}
-
 	}
 
 	private void showSettingScreen() {
@@ -453,7 +454,8 @@ public class APMService extends Service implements LocationListener,
 
 	}
 
-	private void buildGPSDialog(String title, String message) {
+	private void buildGPSDialog(String title, String message,
+			final boolean isTurnGpsOn) {
 		Builder builder = new AlertDialog.Builder(getApplicationContext(),
 				AlertDialog.THEME_HOLO_LIGHT);
 		builder.setTitle(title);
@@ -463,11 +465,25 @@ public class APMService extends Service implements LocationListener,
 				new DialogInterface.OnClickListener() {
 					@Override
 					public void onClick(DialogInterface dialog, int which) {
-						Intent intent = new Intent(
-								Settings.ACTION_LOCATION_SOURCE_SETTINGS);
-						intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-						intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-						startActivity(intent);
+						if ((isTurnGpsOn && !isGpsEnabled(getApplicationContext()))
+								|| (!isTurnGpsOn && isGpsEnabled(getApplicationContext()))) {
+							Intent intent = new Intent(
+									Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+							intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+							intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+							startActivity(intent);
+						} else {
+							Toast.makeText(
+									APMService.this,
+									isTurnGpsOn ? getResources().getString(
+											R.string.service_gps_already_on)
+											: getResources()
+													.getString(
+															R.string.service_gps_already_off),
+									Toast.LENGTH_SHORT).show();
+							setupNextTask(true);
+						}
+
 					}
 				});
 		final AlertDialog dialog = builder.create();
@@ -502,6 +518,22 @@ public class APMService extends Service implements LocationListener,
 		default:
 			return false;
 		}
+	}
+
+	private void setGpsFirstFix() {
+		mSearchingGPSProgressDialog = new ProgressDialog(
+				getApplicationContext(), AlertDialog.THEME_HOLO_LIGHT);
+		mSearchingGPSProgressDialog.getWindow().setType(
+				(WindowManager.LayoutParams.TYPE_SYSTEM_ALERT));
+		mSearchingGPSProgressDialog.setCancelable(false);
+		mSearchingGPSProgressDialog.setMessage(getResources().getString(
+				R.string.service_gps_searching));
+		mSearchingGPSProgressDialog.show();
+
+		mLocationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+		mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER,
+				1000, 10, APMService.this);
+		mLocationManager.addGpsStatusListener(APMService.this);
 	}
 
 	@Override
@@ -546,7 +578,9 @@ public class APMService extends Service implements LocationListener,
 										emailContent);
 
 								Intent new_intent = Intent.createChooser(
-										shareIntent, "Recotd Timestamp");
+										shareIntent,
+										getResources().getString(
+												R.string.service_record_log));
 								new_intent
 										.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 								getApplicationContext().startActivity(
@@ -676,6 +710,7 @@ public class APMService extends Service implements LocationListener,
 				@Override
 				public void onStart() {
 					showHomeScreen();
+					killBackgroundProcess(gallery);
 					changeScreenRotationMode(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 					idleTest();
 					LockScreenTest();
@@ -688,7 +723,7 @@ public class APMService extends Service implements LocationListener,
 				@Override
 				public void onStart() {
 					if (wakeLock != null && wakeLock.isHeld()) {
-						Log.w("Kenji", "Release wakelock");
+						Log.d(MainActivity.TAG, "Release wakelock");
 						wakeLock.release();
 					}
 					LockScreenTest();
@@ -700,7 +735,6 @@ public class APMService extends Service implements LocationListener,
 
 				@Override
 				public void onStart() {
-					showHomeScreen();
 					turnScreenOn();
 					buildDialog(
 							getResources().getString(
@@ -759,7 +793,7 @@ public class APMService extends Service implements LocationListener,
 							getResources().getString(
 									R.string.service_turn_gps_on_title),
 							getResources().getString(
-									R.string.service_turn_gps_on_detail));
+									R.string.service_turn_gps_on_detail), true);
 				}
 			}, DURATION_ZERO);
 
@@ -768,33 +802,8 @@ public class APMService extends Service implements LocationListener,
 
 				@Override
 				public void onStart() {
-					mHandler.postDelayed(new Runnable() {
-
-						@Override
-						public void run() {
-							showHomeScreen();
-							mSearchingGPSProgressDialog = new ProgressDialog(
-									getApplicationContext(),
-									AlertDialog.THEME_HOLO_LIGHT);
-							mSearchingGPSProgressDialog
-									.getWindow()
-									.setType(
-											(WindowManager.LayoutParams.TYPE_SYSTEM_ALERT));
-							mSearchingGPSProgressDialog.setCancelable(false);
-							mSearchingGPSProgressDialog
-									.setMessage(getResources().getString(
-											R.string.service_gps_searching));
-							mSearchingGPSProgressDialog.show();
-
-							mLocationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
-							mLocationManager.requestLocationUpdates(
-									LocationManager.GPS_PROVIDER, 1000, 10,
-									APMService.this);
-							mLocationManager
-									.addGpsStatusListener(APMService.this);
-
-						}
-					}, DURATION_SMALL_DELAY);
+					showHomeScreen();
+					setGpsFirstFix();
 				}
 			}, DURATION_ZERO);
 
@@ -803,12 +812,6 @@ public class APMService extends Service implements LocationListener,
 
 				@Override
 				public void onStart() {
-					showHomeScreen();
-					changeScreenRotationMode(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-
-					setupConnectivityState(true);
-
-					turnScreenOn();
 					buildDialog(
 							getResources().getString(
 									R.string.service_connectivity_title),
@@ -817,13 +820,13 @@ public class APMService extends Service implements LocationListener,
 				}
 			}, DURATION_ZERO);
 
-	PowerMeasurementItem mSuspendWithConnectivityItem = new PowerMeasurementItem(
+	PowerMeasurementItem mSuspendLongItem = new PowerMeasurementItem(
 			new PowerMeasurementItem.OnAlarmReceivedListener() {
 
 				@Override
 				public void onStart() {
 					if (wakeLock != null && wakeLock.isHeld()) {
-						Log.w("Kenji", "Release wakelock");
+						Log.d(MainActivity.TAG, "Release wakelock");
 						wakeLock.release();
 					}
 					LockScreenTest();
@@ -841,7 +844,8 @@ public class APMService extends Service implements LocationListener,
 							getResources().getString(
 									R.string.service_turn_gps_off_title),
 							getResources().getString(
-									R.string.service_turn_gps_off_detail));
+									R.string.service_turn_gps_off_detail),
+							false);
 				}
 			}, DURATION_ZERO);
 
@@ -859,19 +863,6 @@ public class APMService extends Service implements LocationListener,
 				}
 			}, DURATION_ZERO);
 
-	PowerMeasurementItem mSuspendWithModemItem = new PowerMeasurementItem(
-			new PowerMeasurementItem.OnAlarmReceivedListener() {
-
-				@Override
-				public void onStart() {
-					if (wakeLock != null && wakeLock.isHeld()) {
-						Log.w("Kenji", "Release wakelock");
-						wakeLock.release();
-					}
-					LockScreenTest();
-				}
-			}, DURATION_LONG);
-
 	PowerMeasurementItem mEndTestItem = new PowerMeasurementItem(
 			new PowerMeasurementItem.OnAlarmReceivedListener() {
 
@@ -887,7 +878,7 @@ public class APMService extends Service implements LocationListener,
 	public void onGpsStatusChanged(int event) {
 		switch (event) {
 		case GpsStatus.GPS_EVENT_FIRST_FIX:
-			Log.w(MainActivity.TAG, "GPS_EVENT_FIRST_FIX");
+			Log.d(MainActivity.TAG, "GPS_EVENT_FIRST_FIX");
 			if (!isGPSFirstFix) {
 				isGPSFirstFix = true;
 				if (mSearchingGPSProgressDialog != null
@@ -901,7 +892,6 @@ public class APMService extends Service implements LocationListener,
 				}
 				setupNextTask(true);
 			}
-
 			break;
 		}
 	}
@@ -909,26 +899,21 @@ public class APMService extends Service implements LocationListener,
 	@Override
 	public void onLocationChanged(final Location location) {
 		Log.w(MainActivity.TAG, "onLocationChanged");
-
 	}
 
 	@Override
 	public void onProviderDisabled(String arg0) {
 		Log.w(MainActivity.TAG, "onProviderDisabled");
-
 	}
 
 	@Override
 	public void onProviderEnabled(String arg0) {
 		Log.w(MainActivity.TAG, "onProviderEnabled");
-
 	}
 
 	@Override
 	public void onStatusChanged(String provider, int status, Bundle extras) {
 		Log.w(MainActivity.TAG, "onStatusChanged provider = " + provider
 				+ " status=" + status + " extras=" + extras.toString());
-
 	}
-
 }
