@@ -6,7 +6,15 @@
     <string name="hello_world">Hello world!</string>
     <string name="description">Kenji Chao</string>
     <string name="info">"本工具是為了增進測量 Power 的效率而生，你只需要很簡單的步驟即可輕鬆完成測試"</string>
-    <string name="step_1_title">"Step 1: 初始設定"</string>
+    <string name="step_0_title">"Step 0: 機台初始設定"</string>
+    <string name="step_0_detail">"1. 將「golden_flower_h264_720_30p_7M.mp4」以及「H264_1080p_15Mbps_30fps.mp4」這兩個影片檔放在儲存裝置的根目錄下（例如: /sdcard），並將「1. Bitter Heart.mp3」放置在Music資料夾下（例如: /sdcard/Music)
+2. (Optional) 3G 或 LTE 機台請插入 sim 卡，並確認有基地台訊號後 disable network data
+3. Date &amp; time > Select time zone 設定為 GMT +8，並連上一個可用的  Wifi 取得現在時間 
+4. Display > Brightness 設定為最亮，並取消 Automatic brightness
+5. Display > Sleep 設定為 Never
+6. 開啟 Airplane mode
+"</string>
+    <string name="step_1_title">"Step 1: intent 設定"</string>
     <string name="step_1_detail">"設定 music 以及 video intent 所要執行的應用程式，選擇完以後請點選「一律採用」，開始播音樂以及影片以後可按 back 鍵回到本頁"</string>
     <string name="step_1_music">"設定 music intent"</string>
     <string name="step_1_video">"設定 video intent"</string>
@@ -19,10 +27,8 @@
     <string name="step_4_title">"Step 4: 中斷測試"</string>
     <string name="step_4_detail">"啟動快速測試或是完整測試以後，想要中斷測試請點選下面的按鈕"</string>
     <string name="step_4_stop">"中斷測試"</string>
-    <string name="attention">"使用須知：\n
-        使用前請自行做好機台的設定，並將「golden_flower_h264_720_30p_7M.mp4」以及「H264_1080p_15Mbps_30fps.mp4」這兩個影片檔放在儲存裝置的根目錄下（例如: /sdcard），並將「1. Bitter Heart.mp3」放置在Music資料夾下（例如: /sdcard/Music）"</string>
     <string name="procedure">"
-	    所有測項量測順序如下:\n
+所有測項量測順序如下:\n
 1. idle, display show HOME screen
 
 2. idle,  display show Setting screen
