@@ -35,6 +35,7 @@ import android.media.RingtoneManager;
 import android.net.Uri;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.IBinder;
@@ -76,6 +77,9 @@ public class APMService extends Service implements LocationListener,
 
 	private static final long DURATION_QUICK = 5000;
 
+	private static final long DURATION_COUNDOWN_TIMER_ALL = 30000;
+	private static final long DURATION_COUNDOWN_TIMER_TICK = 1000;
+
 	Handler mHandler = new Handler();
 	ProgressDialog mSearchingGPSProgressDialog;
 	LocationManager mLocationManager;
@@ -99,6 +103,26 @@ public class APMService extends Service implements LocationListener,
 	private boolean isGPSFromLowToHigh;
 	private boolean isGPSFromHighToLow;
 	private boolean isGPSFirstFix;
+	private CountDownTimer mCountDownTimer = new CountDownTimer(
+			DURATION_COUNDOWN_TIMER_ALL, DURATION_COUNDOWN_TIMER_TICK) {
+
+		@Override
+		public void onTick(long millisUntilFinished) {
+			int secondsLeft = (int) millisUntilFinished / 1000;
+			String searchProgressText = getResources().getString(
+					R.string.service_gps_searching);
+			if (mSearchingGPSProgressDialog != null
+					&& mSearchingGPSProgressDialog.isShowing()) {
+				mSearchingGPSProgressDialog.setMessage(searchProgressText
+						.replace("#seconds#", String.valueOf(secondsLeft)));
+			}
+		}
+
+		@Override
+		public void onFinish() {
+			finishGPSFirstFix();
+		}
+	};
 
 	private final BroadcastReceiver alarmExpiredReceiver = new BroadcastReceiver() {
 		@Override
@@ -167,7 +191,6 @@ public class APMService extends Service implements LocationListener,
 
 	@Override
 	public void onCreate() {
-
 		initVariables();
 		registerAlarmReceiver();
 		setupMeasureItems();
@@ -526,14 +549,46 @@ public class APMService extends Service implements LocationListener,
 		mSearchingGPSProgressDialog.getWindow().setType(
 				(WindowManager.LayoutParams.TYPE_SYSTEM_ALERT));
 		mSearchingGPSProgressDialog.setCancelable(false);
-		mSearchingGPSProgressDialog.setMessage(getResources().getString(
-				R.string.service_gps_searching));
+		String searchProgressText = getResources().getString(
+				R.string.service_gps_searching);
+		mSearchingGPSProgressDialog.setMessage(searchProgressText.replace(
+				"#seconds#",
+				String.valueOf((int) DURATION_COUNDOWN_TIMER_ALL / 1000)));
 		mSearchingGPSProgressDialog.show();
+
+		mHandler.postDelayed(new Runnable() {
+
+			@Override
+			public void run() {
+				// TODO Auto-generated method stub
+				mCountDownTimer.start();
+			}
+		}, DURATION_COUNDOWN_TIMER_TICK);
 
 		mLocationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
 		mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER,
 				1000, 10, APMService.this);
 		mLocationManager.addGpsStatusListener(APMService.this);
+	}
+
+	private void finishGPSFirstFix() {
+		if (!isGPSFirstFix) {
+			isGPSFirstFix = true;
+			if (mSearchingGPSProgressDialog != null
+					&& mSearchingGPSProgressDialog.isShowing()) {
+				mSearchingGPSProgressDialog.dismiss();
+			}
+
+			if (mCountDownTimer != null) {
+				mCountDownTimer.cancel();
+			}
+
+			if (mLocationManager != null) {
+				mLocationManager.removeGpsStatusListener(APMService.this);
+				mLocationManager.removeUpdates(APMService.this);
+			}
+			setupNextTask(true);
+		}
 	}
 
 	@Override
@@ -544,6 +599,11 @@ public class APMService extends Service implements LocationListener,
 			wm = (WindowManager) getSystemService(WINDOW_SERVICE);
 			wm.removeView(switchOrientationView);
 			switchOrientationView = null;
+		}
+
+		if (mCountDownTimer != null) {
+			mCountDownTimer.cancel();
+			mCountDownTimer = null;
 		}
 
 		mHandler.removeCallbacksAndMessages(null);
@@ -879,19 +939,7 @@ public class APMService extends Service implements LocationListener,
 		switch (event) {
 		case GpsStatus.GPS_EVENT_FIRST_FIX:
 			Log.d(MainActivity.TAG, "GPS_EVENT_FIRST_FIX");
-			if (!isGPSFirstFix) {
-				isGPSFirstFix = true;
-				if (mSearchingGPSProgressDialog != null
-						&& mSearchingGPSProgressDialog.isShowing()) {
-					mSearchingGPSProgressDialog.dismiss();
-				}
-
-				if (mLocationManager != null) {
-					mLocationManager.removeGpsStatusListener(APMService.this);
-					mLocationManager.removeUpdates(APMService.this);
-				}
-				setupNextTask(true);
-			}
+			finishGPSFirstFix();
 			break;
 		}
 	}
