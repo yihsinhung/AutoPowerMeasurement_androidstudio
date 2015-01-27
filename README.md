@@ -57,8 +57,9 @@ P.S. Linux User 可使用 Release/setupAutoPowerMeasurement.sh 直接將 mediaFi
 3.	此版自動量測 Excel 開啟 agilent 後會自動設定輸出電壓為 4v，並 turn on output。
 注意: 開啟的 agilent automation interface 有顯示上的bug，測量前請先從 Agilent power supply 的面版確認電壓4v 有輸出。
 4.	點選按鈕5會彈出一提示對話框，下一步同步按下device apk秀出之提示對話框確定鈕即開始測量。
-<img src="https://github.com/KenjiChao/AutoPowerMeasurement/blob/master/images/excel/excel_03.png" width="265px" height="178px" />
-<img src="https://github.com/KenjiChao/AutoPowerMeasurement/blob/master/images/excel/excel_04.png" width="487px" height="178px" />
+
+<img src="https://github.com/KenjiChao/AutoPowerMeasurement/blob/master/images/excel/excel_03.png" width="253px" height="170px" />
+<img src="https://github.com/KenjiChao/AutoPowerMeasurement/blob/master/images/excel/excel_04.png" width="465px" height="170px" />
 
 5. 在測項6, 9, 11, 12測量前excel與device apk 皆會出現提示對話框提醒使用者完成測項設定，完成後務必同時按下兩端之確定按鈕才能繼續正常測量。
 6. 測項11與12測量完成後會自動儲存 data logging binary 到與 Excel 同一個資料夾。
@@ -86,7 +87,7 @@ P.S. Linux User 可使用 Release/setupAutoPowerMeasurement.sh 直接將 mediaFi
 做完「機台初始設定」以後，即可開啟使用本 App
 下圖為首頁，共有「intent 設定」、「快速測試」、「完整測試」、「中斷測試」
 
-<img src="https://github.com/KenjiChao/AutoPowerMeasurement/blob/master/images/app/app_01.jpg" width="400px" height="640px" />
+<img src="https://github.com/KenjiChao/AutoPowerMeasurement/blob/master/images/app/app_01.jpg" width="360px" height="572px" />
 
 本 App 會發送播放 music 以及 video 的影片來執行多媒體測項，有的機台如果有不只一個可以處理這樣子的多媒體 intent ，如下面兩個圖，必須先在此步驟選取要執行的應用程式，並點選「一律採用」方便之後的自動化測試
 
@@ -97,14 +98,14 @@ P.S. Linux User 可使用 Release/setupAutoPowerMeasurement.sh 直接將 mediaFi
 由於本 App 會使用到鎖屏的權限來讓裝置進入 suspend 的狀態，所以第一次測試前會要求使用者開啟權限，如下圖。
 點選啟用以後會自動開始執行測項
 
-<img src="https://github.com/KenjiChao/AutoPowerMeasurement/blob/master/images/app/app_04.jpg" width="400px" height="640px" />
+<img src="https://github.com/KenjiChao/AutoPowerMeasurement/blob/master/images/app/app_04.jpg" width="360px" height="572px" />
 
 
 ###開始完整測試
 點選「完整測試」，畫面會回到Home，並且跳出提示對話框，然後同時按下 PC 端與裝置端之確定鈕開始量測 Home 與 Setting 測項
 
-<img src="https://github.com/KenjiChao/AutoPowerMeasurement/blob/master/images/app/app_05.jpg" width="400px" height="640px" />
-<img src="https://github.com/KenjiChao/AutoPowerMeasurement/blob/master/images/app/app_06.jpg" width="400px" height="640px" />
+<img src="https://github.com/KenjiChao/AutoPowerMeasurement/blob/master/images/app/app_05.jpg" width="360px" height="572px" />
+<img src="https://github.com/KenjiChao/AutoPowerMeasurement/blob/master/images/app/app_06.jpg" width="360px" height="572px" />
 
 
 再來螢幕會暗掉播放音樂，接著依序播放 720p 以及 1080p 測項的影片，如下圖所示
@@ -115,32 +116,32 @@ P.S. Linux User 可使用 Release/setupAutoPowerMeasurement.sh 直接將 mediaFi
 影片測試結束後，系統會進入idle (display off) 的狀態，此時螢幕關閉但仍持有 wakelock，經過一段時間後會解 鎖 wakelock，進入 suspend 的狀態，這兩個測項結束以後會自動出現插入耳機的提示，一樣同時按下電腦與裝置端的確定按鈕開始進行測量。
 耳機的測項結束後會跳出對話框提示要連接 HDMI 線，接上線以後同時按下電腦與裝置端的確定按鈕開始進行測量
 
-<img src="https://github.com/KenjiChao/AutoPowerMeasurement/blob/master/images/app/app_09.jpg" width="400px" height="640px" />
-<img src="https://github.com/KenjiChao/AutoPowerMeasurement/blob/master/images/app/app_10.jpg" width="400px" height="640px" />
+<img src="https://github.com/KenjiChao/AutoPowerMeasurement/blob/master/images/app/app_09.jpg" width="360px" height="572px" />
+<img src="https://github.com/KenjiChao/AutoPowerMeasurement/blob/master/images/app/app_10.jpg" width="360px" height="572px" />
 
 HDMI 測試結束後，接下來會量測 suspend with WIFI + BT + GPS on，由於 Android SDK 的限制，Wifi 跟 BT 可以透過程式開關，但是 GPS 必須要手動開啟如下圖
 
-<img src="https://github.com/KenjiChao/AutoPowerMeasurement/blob/master/images/app/app_11.jpg" width="400px" height="640px" />
-<img src="https://github.com/KenjiChao/AutoPowerMeasurement/blob/master/images/app/app_12.jpg" width="400px" height="640px" />
+<img src="https://github.com/KenjiChao/AutoPowerMeasurement/blob/master/images/app/app_11.jpg" width="360px" height="572px" />
+<img src="https://github.com/KenjiChao/AutoPowerMeasurement/blob/master/images/app/app_12.jpg" width="360px" height="572px" />
 
 GPS 開啟後我們會嘗試在 30 秒內搜尋 GPS_FIRST_FIX 確認有收到第一個位置訊號，有收到訊號或是 30 秒內沒收到的話會跳出提示框確認進行該測項，記住 Wifi 打開以後應該會自動連上之前記憶過的 Wifi，確認沒問題後同時按下電腦與裝置端的確定按鈕開始進行測量
 
-<img src="https://github.com/KenjiChao/AutoPowerMeasurement/blob/master/images/app/app_13.jpg" width="400px" height="640px" />
-<img src="https://github.com/KenjiChao/AutoPowerMeasurement/blob/master/images/app/app_14.jpg" width="400px" height="640px" />
+<img src="https://github.com/KenjiChao/AutoPowerMeasurement/blob/master/images/app/app_13.jpg" width="360px" height="572px" />
+<img src="https://github.com/KenjiChao/AutoPowerMeasurement/blob/master/images/app/app_14.jpg" width="360px" height="572px" />
 
 最後進行的是 Suspend with Camp to live network + Data OFF，這個測項是在皆 Sim 卡的情況下，將 Network Data disable 的情況下量測有 telephony 訊號下的耗電，Wifi 以及 BT 已經自動關閉，需要手動關閉 GPS
 
-<img src="https://github.com/KenjiChao/AutoPowerMeasurement/blob/master/images/app/app_15.jpg" width="400px" height="640px" />
+<img src="https://github.com/KenjiChao/AutoPowerMeasurement/blob/master/images/app/app_15.jpg" width="360px" height="572px" />
 
 接下來必須關閉飛航模式來 enable telephony data，直接從上方 status bar 關閉飛航模式即可
 
-<img src="https://github.com/KenjiChao/AutoPowerMeasurement/blob/master/images/app/app_16.jpg" width="400px" height="640px" />
-<img src="https://github.com/KenjiChao/AutoPowerMeasurement/blob/master/images/app/app_17.jpg" width="400px" height="640px" />
+<img src="https://github.com/KenjiChao/AutoPowerMeasurement/blob/master/images/app/app_16.jpg" width="360px" height="572px" />
+<img src="https://github.com/KenjiChao/AutoPowerMeasurement/blob/master/images/app/app_17.jpg" width="360px" height="572px" />
 
 測試結束後會跳出對話框提示測量已經全部結束，如果測試過程有問題最後可以分享此次的測試 Log
 
-<img src="https://github.com/KenjiChao/AutoPowerMeasurement/blob/master/images/app/app_18.jpg" width="400px" height="640px" />
-<img src="https://github.com/KenjiChao/AutoPowerMeasurement/blob/master/images/app/app_19.jpg" width="400px" height="640px" />
+<img src="https://github.com/KenjiChao/AutoPowerMeasurement/blob/master/images/app/app_18.jpg" width="360px" height="572px" />
+<img src="https://github.com/KenjiChao/AutoPowerMeasurement/blob/master/images/app/app_19.jpg" width="360px" height="572px" />
 
 ###中斷測試
 在測試進行中，回到 App 點選中斷測試即可結束進行中的測試
@@ -149,7 +150,7 @@ GPS 開啟後我們會嘗試在 30 秒內搜尋 GPS_FIRST_FIX 確認有收到第
 ###移除apk
 由於此app有使用到裝置管理員的權限，沒有辦法直接刪除，必須到Settings > Security > Device administrators 裡頭將Auto Power Measurement取消勾選，接著才可以移除本App
 
-<img src="https://github.com/KenjiChao/AutoPowerMeasurement/blob/master/images/app/app_20.jpg" width="400px" height="640px" />
+<img src="https://github.com/KenjiChao/AutoPowerMeasurement/blob/master/images/app/app_20.jpg" width="360px" height="572px" />
 
 ## License
 ```
