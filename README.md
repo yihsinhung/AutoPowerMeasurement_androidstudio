@@ -90,8 +90,8 @@ P.S. Linux User 可使用 Release/setupAutoPowerMeasurement.sh 直接將 mediaFi
 
 本 App 會發送播放 music 以及 video 的影片來執行多媒體測項，有的機台如果有不只一個可以處理這樣子的多媒體 intent ，如下面兩個圖，必須先在此步驟選取要執行的應用程式，並點選「一律採用」方便之後的自動化測試
 
-<img src="https://github.com/KenjiChao/AutoPowerMeasurement/blob/master/images/app/app_02.jpg" width="400px" height="640px" />
-<img src="https://github.com/KenjiChao/AutoPowerMeasurement/blob/master/images/app/app_03.jpg" width="400px" height="640px" />
+<img src="https://github.com/KenjiChao/AutoPowerMeasurement/blob/master/images/app/app_02.jpg" width="360px" height="572px" />
+<img src="https://github.com/KenjiChao/AutoPowerMeasurement/blob/master/images/app/app_03.jpg" width="360px" height="572px" />
 
 第一次使用建議先點選「快速測試」來快速跑過所有測項
 由於本 App 會使用到鎖屏的權限來讓裝置進入 suspend 的狀態，所以第一次測試前會要求使用者開啟權限，如下圖。
