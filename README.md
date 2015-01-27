@@ -5,10 +5,13 @@
 
 
 ## Features
-* 加入 Suspend with Connectivity (Bluetooh, Wifi, GPS) 以及 Suspend with modem on 的測項
-* 使用 alarm manager + broadcast receiver 來實作延時任務，在suspend的時候執行任務的時間不會跑掉
+* 加入 Suspend with Wifi + BT + GPS on測項，此時Airplane mode on 、wifi需連上預先記憶過的 AP，GPS 會搜尋到第一個定位點以後開始量測
+* 加入 Suspend with Camp to live network + Network Data Off測項，此測項為機台插入Sim卡後，Disable Network Data在只有telephony的訊號上進行量測
+* 上述兩個測項測量時間為五分鐘，為了方便測試後濾掉雜訊過多的區間，excel tool會自動儲存這兩個測項的Data Logging Binary
+* 使用 alarm manager + broadcast receiver來實作延時任務，改用 kitkat 以後才有的setExact function來得到精準的時間 (https://developer.android.com/about/versions/android-4.4.html#BehaviorAlarms )
 * 將所有測項模組化，方便未來新增或刪減測項
-* 在預設直的螢幕(ME581CL) 跟橫的螢幕(TF303K) 測試過皆可以完美運行
+* 測量的過程中當有提示框出現時，device 會發出提示音來提醒你
+* 在預設直的螢幕 (ME581CL) 跟橫的螢幕 (TF303K) 測試過皆可以完美運行
 * 優化初始設定的提示，讓第一次使用的人可以輕鬆上手
 
 
@@ -154,7 +157,7 @@ GPS 開啟後我們會嘗試在 30 秒內搜尋 GPS_FIRST_FIX 確認有收到第
 
 ## License
 ```
-Copyright (C)  JB Liu, and Kenji Chao
+Copyright (C) 2015 JB Liu, and Kenji Chao
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
