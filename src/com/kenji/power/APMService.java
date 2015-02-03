@@ -12,6 +12,7 @@ import android.app.ActivityManager.RunningAppProcessInfo;
 import android.app.AlarmManager;
 import android.app.AlertDialog;
 import android.app.AlertDialog.Builder;
+import android.app.Notification;
 import android.app.PendingIntent;
 import android.app.ProgressDialog;
 import android.app.Service;
@@ -25,6 +26,8 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.PixelFormat;
 import android.location.GpsStatus;
 import android.location.Location;
@@ -44,6 +47,7 @@ import android.os.PowerManager.WakeLock;
 import android.provider.Settings;
 import android.provider.Settings.Secure;
 import android.provider.Settings.SettingNotFoundException;
+import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
@@ -64,6 +68,8 @@ public class APMService extends Service implements LocationListener,
 	private int orientation;
 
 	private static final String ACTION_ALARM_EXPIRED = "com.kenji.power.ALARM_EXPIRED";
+	public static final String ACTION_START_SERVICE = "com.kenji.power.START_SERVICE";
+	public static final String ACTION_STOP_SERVICE = "com.kenji.power.STOP_SERVICE";
 	private static final String ALARM_EXPIRED_POSITION = "alarm_expired_position";
 
 	private static final long DURATION_ZERO = 0;
@@ -179,14 +185,53 @@ public class APMService extends Service implements LocationListener,
 
 	@Override
 	public int onStartCommand(Intent intent, int flags, int startId) {
-		gallery = intent.getExtras().getString("gallery", "");
-		testType = intent.getExtras().getInt(ACTIVITY_PARA_TEST_TYPE,
-				TEST_TYPE_QUICK);
-		orientation = intent.getExtras().getInt(ACTIVITY_PARA_ORIENTATION,
-				Configuration.ORIENTATION_PORTRAIT);
-		Log.d(MainActivity.TAG, "testType=" + testType);
+
+		if (intent.getAction().equals(ACTION_STOP_SERVICE)) {
+			stopSelf();
+		} else {
+			foregroundServiceSettings(startId);
+
+			gallery = intent.getExtras().getString("gallery", "");
+			testType = intent.getExtras().getInt(ACTIVITY_PARA_TEST_TYPE,
+					TEST_TYPE_QUICK);
+			orientation = intent.getExtras().getInt(ACTIVITY_PARA_ORIENTATION,
+					Configuration.ORIENTATION_PORTRAIT);
+			Log.d(MainActivity.TAG, "testType=" + testType);
+		}
 
 		return Service.START_NOT_STICKY;
+	}
+
+	private void foregroundServiceSettings(int startId) {
+		// Notification item click intent
+		Bitmap icon = BitmapFactory.decodeResource(getResources(),
+				R.drawable.ic_launcher);
+		Intent notificationIntent = new Intent(this, MainActivity.class);
+		notificationIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK
+				| Intent.FLAG_ACTIVITY_CLEAR_TASK);
+		PendingIntent pendingIntent = PendingIntent.getActivity(this, 0,
+				notificationIntent, 0);
+
+		// Notification stop button click intent
+		Intent stopIntent = new Intent(this, APMService.class);
+		stopIntent.setAction(ACTION_STOP_SERVICE);
+		PendingIntent pendingstopIntent = PendingIntent.getService(this, 0,
+				stopIntent, 0);
+
+		Notification notification = new NotificationCompat.Builder(this)
+				.setContentTitle(getResources().getString(R.string.app_name))
+				.setTicker(getResources().getString(R.string.app_name))
+				.setContentText(
+						getResources().getString(R.string.service_noti_content))
+				.setSmallIcon(R.drawable.ic_launcher)
+				.setLargeIcon(Bitmap.createScaledBitmap(icon, 128, 128, false))
+				.setContentIntent(pendingIntent)
+				.setOngoing(true)
+				.addAction(android.R.drawable.ic_media_pause,
+						getResources().getString(R.string.service_noti_stop),
+						pendingstopIntent).build();
+
+		startForeground(startId, notification);
 	}
 
 	@Override
@@ -593,6 +638,7 @@ public class APMService extends Service implements LocationListener,
 
 	@Override
 	public void onDestroy() {
+		stopForeground(true);
 		unregisterReceiver(alarmExpiredReceiver);
 
 		if (switchOrientationView != null) {

@@ -42,7 +42,11 @@
             android:theme="@style/Theme.Transparent" >
         </activity>
 
-        <service android:name="APMService" >
+        <service
+            android:name="APMService"
+            android:exported="false" >
+            <intent-filter android:priority="1000" >
+            </intent-filter>
         </service>
 
         <receiver

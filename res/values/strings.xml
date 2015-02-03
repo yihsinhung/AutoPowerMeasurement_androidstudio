@@ -79,5 +79,7 @@
     <string name="service_gps_already_on">GPS 已開啟</string>
     <string name="service_gps_already_off">GPS 已關閉</string>
     <string name="service_record_log">紀錄本次測試 log</string>
-
+    <string name="service_noti_content">測試進行中</string>
+    <string name="service_noti_stop">中斷測試</string>
+    
 </resources>

@@ -151,6 +151,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
 						getDeviceDefaultOrientation());
 				intent.putExtras(bundle);
 				intent.setClass(getApplicationContext(), APMService.class);
+				intent.setAction(APMService.ACTION_START_SERVICE);
 				getApplicationContext().startService(intent);
 				finish();
 			}
