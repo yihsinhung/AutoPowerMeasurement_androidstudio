@@ -330,7 +330,7 @@ public class APMService extends Service implements LocationListener,
 				intent, PendingIntent.FLAG_ONE_SHOT);
 
 		AlarmManager am = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
-		am.setExact(AlarmManager.RTC_WAKEUP, cal.getTimeInMillis(), pi);
+		am.setWindow(AlarmManager.RTC_WAKEUP, cal.getTimeInMillis(), 0, pi);
 	}
 
 	private void setupConnectivityState(boolean enabled) {
