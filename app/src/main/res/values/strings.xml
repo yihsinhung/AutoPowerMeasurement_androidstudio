@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">Auto Power Measurement</string>
+    <string name="action_settings">Settings</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="description">Kenji Chao</string>
+    <string name="info">"本工具是為了增進測量 Power 的效率而生，你只需要很簡單的步驟即可輕鬆完成測試"</string>
+    <string name="step_0_title">"Step 0: 機台初始設定"</string>
+    <string name="step_0_detail">"1. 將「golden_flower_h264_720_30p_7M.mp4」以及「H264_1080p_15Mbps_30fps.mp4」這兩個影片檔放在儲存裝置的根目錄下（例如: /sdcard），並將「1. Bitter Heart.mp3」放置在Music資料夾下（例如: /sdcard/Music)
+2. (Optional) 3G 或 LTE 機台請插入 sim 卡，並確認有基地台訊號後 disable network data
+3. Date &amp; time > Select time zone 設定為 GMT +8，並連上一個可用的  Wifi 取得現在時間 
+4. Display > Brightness 設定為最亮，並取消 Automatic brightness
+5. Display > Sleep 設定為 Never
+6. 開啟 Airplane mode
+"</string>
+    <string name="step_1_title">"Step 1: intent 設定"</string>
+    <string name="step_1_detail">"設定 music 以及 video intent 所要執行的應用程式，選擇完以後請點選「一律採用」，開始播音樂以及影片以後可按 back 鍵回到本頁"</string>
+    <string name="step_1_music">"設定 music intent"</string>
+    <string name="step_1_video">"設定 video intent"</string>
+    <string name="step_2_title">"Step 2: 快速測試"</string>
+    <string name="step_2_detail">"第一次使用建議先點選「快速測試」來判斷裝置是否可使用本 App 完成所有測項，詳細的量測順序請看最下面"</string>
+    <string name="step_2_fast">"開始快速測試"</string>
+    <string name="step_3_title">"Step 3: 完整測試"</string>
+    <string name="step_3_detail">"確認機台設定以及 PC 端 excel tool 跟 Agilent 連接完畢後，即可開始完整測試"</string>
+    <string name="step_3_complete">"開始完整測試"</string>
+    <string name="step_4_title">"Step 4: 中斷測試"</string>
+    <string name="step_4_detail">"啟動快速測試或是完整測試以後，想要中斷測試請點選下面的按鈕"</string>
+    <string name="step_4_stop">"中斷測試"</string>
+    <string name="procedure">"
+所有測項量測順序如下:\n
+1. idle, display show HOME screen
+
+2. idle,  display show Setting screen
+
+3. mp3 play back when display off (Normal)
+
+4. Video playback 720p (Pad only)
+
+5. Video playback 1080p (Pad only)
+
+6. idle (display off)
+
+7. suspend
+
+8. mp3 play back when display off (Ear-phone)
+
+9. Video playback 720p (HDMI)
+
+10. Video playback 1080p (HDMI)
+
+11. suspend with WIFI, Bluetooth, GPS on
+
+12. suspend with modem on
+"</string>
+    <string name="main_device_is_testing">測試進行中，如要重新測試請先點選「結束測試」"</string>
+    <string name="main_no_testing">目前沒有進行中的測試</string>
+    <string name="service_start_test_title">開始測量</string>
+    <string name="service_start_test_detail">請同時按下確定與電腦端的按鈕開始測量，開始測量後請保持本裝置在穩定的環境，以免影響測量精準度</string>
+    <string name="service_cancel">取消</string>
+    <string name="service_sure">確定</string>
+    <string name="service_test_started">測量已開始</string>
+    <string name="service_plug_earphone_title">請插入耳機</string>
+    <string name="service_plug_earphone_detail">插入耳機後同時按下確定與電腦端的按鈕開始測量</string>
+    <string name="service_plug_hdmi_title">請插入HDMI線</string>
+    <string name="service_plug_hdmi_detail">插入HDMI後同時按下確定與電腦端的按鈕開始測量</string>
+    <string name="service_test_complete_title">測試已完成!</string>
+    <string name="service_test_complete_detail">您可至電腦端的 Excel 檔案觀察此次測量的結果，謝謝!</string>
+    <string name="service_turn_airplane_off_title">關閉飛航模式</string>
+    <string name="service_turn_airplane_off_detail">關閉飛航模式後同時按下確定與電腦端的按鈕開始測量</string>
+    <string name="service_turn_gps_on_title">開啟 GPS</string>
+    <string name="service_turn_gps_on_detail">Wifi 以及藍芽已開啟，GPS 需要手動開啟</string>
+    <string name="service_gps_setting">前往位置設定</string>
+    <string name="service_gps_searching">"等待 GPS 第一次定位中&#8230; #seconds# 秒後取消定位"</string>
+    <string name="service_connectivity_title">GPS 定位成功!</string>
+    <string name="service_connectivity_detail">確認 Wifi連上網路、藍芽及GPS 開啟後同時按下確定與電腦端的按鈕開始測量</string>
+    <string name="service_turn_gps_off_title">關閉 GPS</string>
+    <string name="service_turn_gps_off_detail">Wifi 以及藍芽已關閉，GPS 需要手動關閉</string>
+    <string name="service_gps_already_on">GPS 已開啟</string>
+    <string name="service_gps_already_off">GPS 已關閉</string>
+    <string name="service_record_log">紀錄本次測試 log</string>
+    <string name="service_noti_content">測試進行中</string>
+    <string name="service_noti_stop">中斷測試</string>
+    
+</resources>
